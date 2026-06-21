@@ -3,14 +3,18 @@ import 'package:flutter/material.dart';
 import '../models/tile.dart';
 import '../models/tile_bag.dart';
 import '../state/game_state.dart';
+import '../state/settings.dart';
 import 'board_widget.dart';
+import 'game_theme.dart';
 import 'rack_widget.dart';
+import 'settings_screen.dart';
 
 /// Top-level gameplay screen wiring the board, rack, scoreboard, and controls
 /// to the [GameState] controller.
 class GameScreen extends StatefulWidget {
   final GameState game;
-  const GameScreen({super.key, required this.game});
+  final SettingsController settings;
+  const GameScreen({super.key, required this.game, required this.settings});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -22,15 +26,28 @@ class _GameScreenState extends State<GameScreen> {
 
   GameState get game => widget.game;
 
+  GameTheme get _theme => GameThemeScope.of(context);
+
   @override
   Widget build(BuildContext context) {
+    final theme = GameThemeScope.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF263238),
+      backgroundColor: theme.scaffold,
       appBar: AppBar(
         title: const Text('Scrabble Offline'),
-        backgroundColor: const Color(0xFF1B5E20),
+        backgroundColor: theme.appBar,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    SettingsScreen(settings: widget.settings, game: game),
+              ),
+            ),
+          ),
           IconButton(
             tooltip: 'New Game',
             icon: const Icon(Icons.refresh),
@@ -134,7 +151,7 @@ class _GameScreenState extends State<GameScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF6D4C41),
+        color: _theme.rack,
         borderRadius: BorderRadius.circular(8),
       ),
       child: LayoutBuilder(
@@ -175,7 +192,7 @@ class _GameScreenState extends State<GameScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF37474F),
+        color: _theme.panel,
         borderRadius: BorderRadius.circular(8),
       ),
       child: IntrinsicHeight(
@@ -198,8 +215,11 @@ class _GameScreenState extends State<GameScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
       decoration: BoxDecoration(
-        color: isCurrent ? const Color(0xFF1B5E20) : Colors.transparent,
+        color: isCurrent ? _theme.appBar : Colors.transparent,
         borderRadius: BorderRadius.circular(6),
+        border: isCurrent
+            ? Border.all(color: _theme.accent.withValues(alpha: 0.6))
+            : null,
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -269,9 +289,7 @@ class _GameScreenState extends State<GameScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: game.gameOver
-            ? const Color(0xFF4A148C)
-            : const Color(0xFF455A64),
+        color: game.gameOver ? const Color(0xFF4A148C) : _theme.panel,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(

@@ -22,6 +22,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/dictionary.txt
+    - assets/dictionary_extended.txt
   fonts:
     - family: Roboto
       fonts:

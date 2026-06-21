@@ -4,6 +4,7 @@ import '../models/player.dart';
 import '../models/tile.dart';
 import '../state/game_state.dart';
 import 'board_widget.dart';
+import 'game_theme.dart';
 import 'tile_widget.dart';
 
 /// The current player's rack. Tiles can be dragged onto the board, dragged onto
@@ -26,15 +27,19 @@ class RackWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiles = game.availableRackTiles;
+    final theme = GameThemeScope.of(context);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF6D4C41),
+        color: theme.rack,
         borderRadius: BorderRadius.circular(8),
-        boxShadow: const [
-          BoxShadow(color: Color(0x44000000), blurRadius: 4, offset: Offset(0, 2)),
-        ],
+        boxShadow: theme.richDecoration
+            ? const [
+                BoxShadow(
+                    color: Color(0x44000000), blurRadius: 4, offset: Offset(0, 2)),
+              ]
+            : null,
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {

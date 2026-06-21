@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/board.dart';
 import '../models/tile.dart';
 import '../state/game_state.dart';
+import 'game_theme.dart';
 import 'tile_widget.dart';
 
 /// Renders the 15x15 board, committed and pending tiles, and drag targets.
@@ -25,6 +26,7 @@ class BoardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = GameThemeScope.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final dimension = constraints.biggest.shortestSide;
@@ -34,7 +36,7 @@ class BoardWidget extends StatelessWidget {
           height: dimension,
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
-            color: const Color(0xFF1B5E20),
+            color: theme.boardFrame,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Column(
@@ -58,20 +60,33 @@ class BoardWidget extends StatelessWidget {
   }
 
   Widget _buildCell(BuildContext context, int row, int col, double size) {
+    final theme = GameThemeScope.of(context);
     final committed = game.board.tileAt(row, col);
     final pending = game.pendingTileAt(row, col);
     final cellType = game.board.cellAt(row, col).type;
 
     Widget content;
     if (committed != null) {
-      content = TileWidget(tile: committed, size: size);
+      final tileWidget = TileWidget(tile: committed, size: size);
+      // Theme-gated pop-in when a tile lands on the board.
+      content = theme.animated
+          ? TweenAnimationBuilder<double>(
+              key: ValueKey('$row,$col,${committed.letter}'),
+              tween: Tween(begin: theme.flashy ? 0.4 : 0.7, end: 1.0),
+              duration: Duration(milliseconds: theme.flashy ? 260 : 160),
+              curve: theme.flashy ? Curves.elasticOut : Curves.easeOutBack,
+              builder: (context, scale, child) =>
+                  Transform.scale(scale: scale, child: child),
+              child: tileWidget,
+            )
+          : tileWidget;
     } else if (pending != null) {
       content = GestureDetector(
         onTap: () => onRecall(row, col),
         child: TileWidget(tile: pending, size: size, highlighted: true),
       );
     } else {
-      content = _premiumLabel(cellType, size);
+      content = _premiumLabel(theme, cellType, size);
     }
 
     return DragTarget<RackDragData>(
@@ -87,9 +102,7 @@ class BoardWidget extends StatelessWidget {
         return Container(
           margin: const EdgeInsets.all(0.5),
           decoration: BoxDecoration(
-            color: hovering
-                ? Colors.yellow.withValues(alpha: 0.5)
-                : _cellColor(cellType),
+            color: hovering ? theme.hover : _cellColor(theme, cellType),
             borderRadius: BorderRadius.circular(2),
           ),
           child: Center(child: content),
@@ -98,14 +111,14 @@ class BoardWidget extends StatelessWidget {
     );
   }
 
-  Widget _premiumLabel(CellType type, double size) {
+  Widget _premiumLabel(GameTheme theme, CellType type, double size) {
     // The center uses a Material icon (bundled locally) rather than a unicode
     // star, which would otherwise trigger a symbol-font fetch from a CDN.
     if (type == CellType.center) {
       return FittedBox(
         child: Padding(
           padding: const EdgeInsets.all(3),
-          child: Icon(Icons.star, color: Colors.white, size: size * 0.6),
+          child: Icon(Icons.star, color: theme.premiumText, size: size * 0.6),
         ),
       );
     }
@@ -123,8 +136,8 @@ class BoardWidget extends StatelessWidget {
         padding: const EdgeInsets.all(2),
         child: Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: theme.premiumText,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -132,20 +145,20 @@ class BoardWidget extends StatelessWidget {
     );
   }
 
-  Color _cellColor(CellType type) {
+  Color _cellColor(GameTheme theme, CellType type) {
     switch (type) {
       case CellType.tripleWord:
-        return const Color(0xFFD32F2F);
+        return theme.cellTW;
       case CellType.doubleWord:
-        return const Color(0xFFEF9A9A);
+        return theme.cellDW;
       case CellType.tripleLetter:
-        return const Color(0xFF1976D2);
+        return theme.cellTL;
       case CellType.doubleLetter:
-        return const Color(0xFF90CAF9);
+        return theme.cellDL;
       case CellType.center:
-        return const Color(0xFFEF9A9A);
+        return theme.cellCenter;
       case CellType.standard:
-        return const Color(0xFF2E7D32);
+        return theme.cellStandard;
     }
   }
 }

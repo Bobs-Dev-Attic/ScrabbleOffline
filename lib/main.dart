@@ -4,78 +4,92 @@ import 'engine/ai_player.dart';
 import 'engine/dictionary.dart';
 import 'state/game_state.dart';
 import 'state/persistence.dart';
+import 'state/settings.dart';
 import 'ui/game_screen.dart';
+import 'ui/game_theme.dart';
+import 'ui/settings_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const ScrabbleApp());
 }
 
-class ScrabbleApp extends StatelessWidget {
+/// Holds the bootstrapped, app-wide singletons.
+class AppServices {
+  final GameState game;
+  final SettingsController settings;
+  AppServices(this.game, this.settings);
+}
+
+class ScrabbleApp extends StatefulWidget {
   const ScrabbleApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Scrabble Offline',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1B5E20),
-          brightness: Brightness.dark,
-        ),
-        // Bundled locally so the app never fetches fonts from a CDN at runtime.
-        fontFamily: 'Roboto',
-        useMaterial3: true,
-      ),
-      home: const BootstrapScreen(),
-    );
-  }
+  State<ScrabbleApp> createState() => _ScrabbleAppState();
 }
 
-/// Bootstraps the dictionary trie and Hive store, then offers to continue a
-/// saved game or start a new one. All work here is fully offline.
-class BootstrapScreen extends StatefulWidget {
-  const BootstrapScreen({super.key});
+class _ScrabbleAppState extends State<ScrabbleApp> {
+  late final Future<AppServices> _bootstrap = _initialize();
 
-  @override
-  State<BootstrapScreen> createState() => _BootstrapScreenState();
-}
-
-class _BootstrapScreenState extends State<BootstrapScreen> {
-  late Future<GameState> _bootstrap;
-
-  @override
-  void initState() {
-    super.initState();
-    _bootstrap = _initialize();
-  }
-
-  Future<GameState> _initialize() async {
+  Future<AppServices> _initialize() async {
     final dictionary = Dictionary();
     final persistence = GamePersistence();
+    final settings = SettingsController();
     await Future.wait([
       dictionary.load(),
       persistence.init(),
     ]);
-    return GameState(dictionary: dictionary, persistence: persistence);
+    await settings.init(); // after Hive is initialized by persistence
+    if (settings.permissiveDictionary) {
+      await dictionary.loadExtended();
+      dictionary.permissive = true;
+    }
+    return AppServices(
+      GameState(dictionary: dictionary, persistence: persistence),
+      settings,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<GameState>(
+    return FutureBuilder<AppServices>(
       future: _bootstrap,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const _LoadingScreen();
+          return _bareApp(const _LoadingScreen(), GameTheme.classic);
         }
         if (snapshot.hasError) {
-          return _ErrorScreen(error: '${snapshot.error}');
+          return _bareApp(_ErrorScreen(error: '${snapshot.error}'),
+              GameTheme.classic);
         }
-        return _HomeScreen(game: snapshot.data!);
+        final services = snapshot.data!;
+        return AnimatedBuilder(
+          animation: services.settings,
+          builder: (context, _) {
+            final theme = services.settings.theme;
+            return MaterialApp(
+              title: 'Scrabble Offline',
+              debugShowCheckedModeBanner: false,
+              theme: theme.materialTheme,
+              builder: (context, child) =>
+                  GameThemeScope(theme: theme, child: child!),
+              home: HomeScreen(
+                game: services.game,
+                settings: services.settings,
+              ),
+            );
+          },
+        );
       },
     );
   }
+
+  Widget _bareApp(Widget home, GameTheme theme) => MaterialApp(
+        title: 'Scrabble Offline',
+        debugShowCheckedModeBanner: false,
+        theme: theme.materialTheme,
+        home: home,
+      );
 }
 
 class _LoadingScreen extends StatelessWidget {
@@ -129,14 +143,17 @@ class _ErrorScreen extends StatelessWidget {
   }
 }
 
-/// Landing screen offering New Game / Continue.
-class _HomeScreen extends StatelessWidget {
+/// Landing screen offering New Game / Continue / Settings.
+class HomeScreen extends StatelessWidget {
   final GameState game;
-  const _HomeScreen({required this.game});
+  final SettingsController settings;
+  const HomeScreen({super.key, required this.game, required this.settings});
 
   void _open(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => GameScreen(game: game)),
+      MaterialPageRoute(
+        builder: (_) => GameScreen(game: game, settings: settings),
+      ),
     );
   }
 
@@ -174,9 +191,10 @@ class _HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = GameThemeScope.of(context);
     final hasSave = game.persistence.hasSavedGame;
     return Scaffold(
-      backgroundColor: const Color(0xFF1B5E20),
+      backgroundColor: theme.appBar,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -188,59 +206,81 @@ class _HomeScreen extends StatelessWidget {
                     letterSpacing: 8,
                     color: Colors.white)),
             const SizedBox(height: 4),
-            Text('Offline • ${game.dictionary.wordCount} words loaded',
-                style: const TextStyle(color: Colors.white70)),
+            Text(
+              'Offline • ${game.dictionary.wordCount} words'
+              '${settings.permissiveDictionary ? ' + expanded' : ''}',
+              style: const TextStyle(color: Colors.white70),
+            ),
             const SizedBox(height: 40),
-            SizedBox(
-              width: 220,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  backgroundColor: Colors.amber.shade700,
-                ),
-                onPressed: () {
-                  game.newGame();
-                  _open(context);
-                },
-                icon: const Icon(Icons.people),
-                label: const Text('Pass & Play'),
-              ),
+            _homeButton(
+              context,
+              icon: Icons.people,
+              label: 'Pass & Play',
+              color: Colors.amber.shade700,
+              onPressed: () {
+                game.newGame();
+                _open(context);
+              },
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: 220,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  backgroundColor: Colors.lightBlue.shade700,
-                ),
-                onPressed: () => _startVsComputer(context),
-                icon: const Icon(Icons.smart_toy),
-                label: const Text('vs Computer'),
-              ),
+            _homeButton(
+              context,
+              icon: Icons.smart_toy,
+              label: 'vs Computer',
+              color: Colors.lightBlue.shade700,
+              onPressed: () => _startVsComputer(context),
             ),
             if (hasSave) ...[
               const SizedBox(height: 12),
-              SizedBox(
-                width: 220,
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: const BorderSide(color: Colors.white),
-                  ),
-                  onPressed: () {
-                    final saved = game.persistence.load();
-                    if (saved != null) game.restore(saved);
-                    _open(context);
-                  },
-                  icon: const Icon(Icons.history, color: Colors.white),
-                  label: const Text('Continue',
-                      style: TextStyle(color: Colors.white)),
-                ),
+              _homeButton(
+                context,
+                icon: Icons.history,
+                label: 'Continue',
+                color: Colors.white24,
+                onPressed: () {
+                  final saved = game.persistence.load();
+                  if (saved != null) game.restore(saved);
+                  _open(context);
+                },
               ),
             ],
+            const SizedBox(height: 12),
+            _homeButton(
+              context,
+              icon: Icons.settings,
+              label: 'Settings',
+              color: Colors.white24,
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      SettingsScreen(settings: settings, game: game),
+                ),
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _homeButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: 220,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+        ),
+        onPressed: onPressed,
+        icon: Icon(icon),
+        label: Text(label),
       ),
     );
   }
