@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../models/player.dart';
 import '../models/tile.dart';
 import '../state/game_state.dart';
 import 'board_widget.dart';
 import 'tile_widget.dart';
 
-/// The current player's rack of draggable tiles. Also acts as a drop target so
-/// pending tiles can be dragged back off the board.
+/// The current player's rack. Tiles can be dragged onto the board, dragged onto
+/// each other to reorder, or tapped to select for exchange. All seven tiles are
+/// sized to fit on a single row.
 class RackWidget extends StatelessWidget {
   final GameState game;
   final void Function(int rackIndex) onExchangeToggle;
@@ -24,10 +26,9 @@ class RackWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiles = game.availableRackTiles;
-    const tileSize = 48.0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFF6D4C41),
         borderRadius: BorderRadius.circular(8),
@@ -35,19 +36,29 @@ class RackWidget extends StatelessWidget {
           BoxShadow(color: Color(0x44000000), blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        alignment: WrapAlignment.center,
-        children: [
-          for (final entry in tiles)
-            _buildRackTile(entry.key, entry.value, tileSize),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Divide the row into 7 equal slots so all tiles always fit, with a
+          // little spacing taken from each slot. Sizing for the full rack keeps
+          // tiles a stable size as they are placed.
+          final slot = constraints.maxWidth / kRackCapacity;
+          final spacing = (slot * 0.12).clamp(2.0, 6.0);
+          final size = (slot - spacing).clamp(20.0, 60.0);
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < tiles.length; i++) ...[
+                if (i > 0) SizedBox(width: spacing),
+                _slot(tiles[i].key, tiles[i].value, size),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildRackTile(int rackIndex, Tile tile, double size) {
+  Widget _slot(int rackIndex, Tile tile, double size) {
     if (exchangeMode) {
       final selected = selectedForExchange.contains(rackIndex);
       return GestureDetector(
@@ -60,17 +71,34 @@ class RackWidget extends StatelessWidget {
     }
 
     final data = RackDragData(rackIndex, tile);
-    return Draggable<RackDragData>(
-      data: data,
-      feedback: Material(
-        color: Colors.transparent,
-        child: TileWidget(tile: tile, size: size, highlighted: true),
-      ),
-      childWhenDragging: Opacity(
-        opacity: 0.3,
-        child: TileWidget(tile: tile, size: size),
-      ),
-      child: TileWidget(tile: tile, size: size),
+    return DragTarget<RackDragData>(
+      onWillAcceptWithDetails: (d) => d.data.rackIndex != rackIndex,
+      onAcceptWithDetails: (d) => game.reorderRack(d.data.rackIndex, rackIndex),
+      builder: (context, candidate, rejected) {
+        final hovering = candidate.isNotEmpty;
+        return Draggable<RackDragData>(
+          data: data,
+          feedback: Material(
+            color: Colors.transparent,
+            child: TileWidget(tile: tile, size: size * 1.1, highlighted: true),
+          ),
+          childWhenDragging: Opacity(
+            opacity: 0.3,
+            child: TileWidget(tile: tile, size: size),
+          ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(size * 0.14),
+              border: Border.all(
+                color: hovering ? Colors.amberAccent : Colors.transparent,
+                width: 2,
+              ),
+            ),
+            child: TileWidget(tile: tile, size: size),
+          ),
+        );
+      },
     );
   }
 }

@@ -162,6 +162,78 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Reorders a tile within the current player's rack (drag-to-arrange).
+  /// Pending placements keep pointing at the right tiles via index remapping.
+  void reorderRack(int from, int to) {
+    if (from == to) return;
+    final rack = currentPlayer.rack;
+    if (from < 0 || from >= rack.length || to < 0 || to >= rack.length) return;
+
+    final tile = rack.removeAt(from);
+    rack.insert(to, tile);
+
+    if (pending.isNotEmpty) {
+      int remap(int k) {
+        if (k == from) return to;
+        var idx = k > from ? k - 1 : k;
+        if (idx >= to) idx += 1;
+        return idx;
+      }
+
+      final updated = <String, PendingPlacement>{};
+      pending.forEach((key, p) {
+        updated[key] = PendingPlacement(p.row, p.col, p.tile, remap(p.rackIndex));
+      });
+      pending
+        ..clear()
+        ..addAll(updated);
+    }
+    notifyListeners();
+  }
+
+  /// Fills the pending tiles with the best move the generator can find for the
+  /// current (human) player, so they can review it and press Play, or recall.
+  bool suggest() {
+    if (gameOver || isComputerTurn) return false;
+    recallAll();
+    final moves = ai.generator.generate(board, currentPlayer.rack);
+    if (moves.isEmpty) {
+      statusMessage = 'No word found — try exchanging tiles.';
+      notifyListeners();
+      return false;
+    }
+    moves.sort((a, b) => b.score.compareTo(a.score));
+    final best = moves.first;
+
+    final usedIndices = <int>{};
+    for (final p in best.placements) {
+      final idx = _matchRackIndex(p.tile, usedIndices);
+      if (idx == -1) {
+        recallAll();
+        statusMessage = 'Could not build a suggestion.';
+        notifyListeners();
+        return false;
+      }
+      usedIndices.add(idx);
+      pending['${p.row},${p.col}'] = PendingPlacement(p.row, p.col, p.tile, idx);
+    }
+    statusMessage =
+        'Suggestion: ${best.mainWord} for ${best.score}. Press Play to confirm.';
+    notifyListeners();
+    return true;
+  }
+
+  int _matchRackIndex(Tile placed, Set<int> used) {
+    final rack = currentPlayer.rack;
+    for (var i = 0; i < rack.length; i++) {
+      if (used.contains(i)) continue;
+      final t = rack[i];
+      if (placed.isBlank && t.isBlank) return i;
+      if (!placed.isBlank && !t.isBlank && t.letter == placed.letter) return i;
+    }
+    return -1;
+  }
+
   // --- Turn resolution -------------------------------------------------------
 
   /// Validates and, if legal, commits the current turn. Returns the result so
