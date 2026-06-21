@@ -62,6 +62,16 @@
       window.deferredPwaPrompt = null;
       return (choice && choice.outcome) ? choice.outcome : 'dismissed';
     };
+
+    // Register the offline caching service worker ourselves. Flutter's loader
+    // only refreshes an existing registration (and ships a no-op worker), so a
+    // fresh install would otherwise have no offline cache.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('flutter_service_worker.js')
+          .catch(function (e) { console.warn('SW registration failed:', e); });
+      });
+    }
   </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
