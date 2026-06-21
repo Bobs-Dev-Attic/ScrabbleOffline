@@ -35,6 +35,34 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- PWA install support: capture the install prompt and expose helpers the
+       Flutter app calls from the "Install app" button. -->
+  <script>
+    window.deferredPwaPrompt = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.deferredPwaPrompt = e;
+    });
+    window.addEventListener('appinstalled', function () {
+      window.deferredPwaPrompt = null;
+    });
+    window.pwaIsStandalone = function () {
+      return (window.matchMedia &&
+              window.matchMedia('(display-mode: standalone)').matches) ||
+             window.navigator.standalone === true;
+    };
+    window.pwaInstallAvailable = function () {
+      return window.deferredPwaPrompt != null;
+    };
+    window.pwaPromptInstall = async function () {
+      var p = window.deferredPwaPrompt;
+      if (!p) return 'unavailable';
+      p.prompt();
+      var choice = await p.userChoice;
+      window.deferredPwaPrompt = null;
+      return (choice && choice.outcome) ? choice.outcome : 'dismissed';
+    };
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

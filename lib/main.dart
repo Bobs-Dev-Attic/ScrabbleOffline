@@ -8,6 +8,7 @@ import 'state/settings.dart';
 import 'ui/animated_background.dart';
 import 'ui/game_screen.dart';
 import 'ui/game_theme.dart';
+import 'ui/pwa_install.dart';
 import 'ui/settings_screen.dart';
 
 void main() {
@@ -291,9 +292,56 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
+            if (!pwaIsStandalone()) ...[
+              const SizedBox(height: 12),
+              _homeButton(
+                context,
+                icon: Icons.download_for_offline,
+                label: 'Install app',
+                color: Colors.teal.shade700,
+                onPressed: () => _installApp(context),
+              ),
+            ],
           ],
         ),
         ),
+      ),
+    );
+  }
+
+  /// Triggers the browser's PWA install prompt, or shows manual steps when the
+  /// prompt isn't available (e.g. iOS Safari, or already installed).
+  Future<void> _installApp(BuildContext context) async {
+    if (pwaInstallAvailable()) {
+      final outcome = await pwaPromptInstall();
+      if (!context.mounted) return;
+      if (outcome == 'accepted') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Installing Scrabble Offline…')),
+        );
+        return;
+      }
+      if (outcome == 'dismissed') return;
+    }
+    if (!context.mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Install Scrabble Offline'),
+        content: const Text(
+          'Add it to your home screen to play full-screen and offline.\n\n'
+          '• iPhone/iPad (Safari): tap the Share button, then '
+          '"Add to Home Screen".\n\n'
+          '• Android (Chrome): open the ⋮ menu, then "Install app" / '
+          '"Add to Home screen".\n\n'
+          'If you don\'t see the option, the app may already be installed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Got it'),
+          ),
+        ],
       ),
     );
   }
