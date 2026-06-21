@@ -132,91 +132,130 @@ class _GameScreenState extends State<GameScreen> {
   Widget _computerRack() {
     final count = game.currentPlayer.rack.length;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFF6D4C41),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        alignment: WrapAlignment.center,
-        children: [
-          for (var i = 0; i < count; i++)
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF8D6E63), Color(0xFF5D4037)],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final slot = constraints.maxWidth / 7;
+          final spacing = (slot * 0.12).clamp(2.0, 6.0);
+          final size = (slot - spacing).clamp(20.0, 60.0);
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < count; i++) ...[
+                if (i > 0) SizedBox(width: spacing),
+                Container(
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF8D6E63), Color(0xFF5D4037)],
+                    ),
+                    borderRadius: BorderRadius.circular(size * 0.14),
+                    border: Border.all(color: const Color(0xFF4E342E)),
+                  ),
+                  child: Center(
+                    child: Icon(Icons.smart_toy,
+                        color: Colors.white54, size: size * 0.45),
+                  ),
                 ),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFF4E342E)),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// Compact single-row scoreboard: one column per player plus a bag column.
+  Widget _scoreboard() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF37474F),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < game.players.length; i++)
+              Expanded(child: _scoreColumn(i)),
+            const VerticalDivider(color: Colors.white24, width: 8),
+            _bagColumn(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _scoreColumn(int i) {
+    final isCurrent = i == game.currentPlayerIndex && !game.gameOver;
+    final player = game.players[i];
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+      decoration: BoxDecoration(
+        color: isCurrent ? const Color(0xFF1B5E20) : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (player.isAI)
+                const Padding(
+                  padding: EdgeInsets.only(right: 3),
+                  child: Icon(Icons.smart_toy, color: Colors.white54, size: 14),
+                ),
+              Flexible(
+                child: Text(
+                  player.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight:
+                        isCurrent ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
               ),
-              child: const Center(
-                child: Icon(Icons.smart_toy, color: Colors.white54, size: 22),
-              ),
+            ],
+          ),
+          Text(
+            '${player.score}',
+            style: const TextStyle(
+              color: Colors.amberAccent,
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
             ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _scoreboard() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF37474F),
-        borderRadius: BorderRadius.circular(8),
-      ),
+  Widget _bagColumn() {
+    return SizedBox(
+      width: 56,
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          for (var i = 0; i < game.players.length; i++)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      if (i == game.currentPlayerIndex && !game.gameOver)
-                        const Icon(Icons.play_arrow,
-                            color: Colors.lightGreenAccent, size: 18),
-                      if (game.players[i].isAI)
-                        const Padding(
-                          padding: EdgeInsets.only(left: 2),
-                          child: Icon(Icons.smart_toy,
-                              color: Colors.white54, size: 16),
-                        ),
-                      const SizedBox(width: 4),
-                      Text(
-                        game.players[i].name,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: i == game.currentPlayerIndex
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    '${game.players[i].score}',
-                    style: const TextStyle(
-                      color: Colors.amberAccent,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const Divider(color: Colors.white24),
+          const Icon(Icons.inventory_2, color: Colors.white60, size: 16),
+          const SizedBox(height: 2),
           Text(
-            'Tiles in bag: ${game.bag.remaining}',
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
+            '${game.bag.remaining}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
+          const Text('bag', style: TextStyle(color: Colors.white54, fontSize: 10)),
         ],
       ),
     );
@@ -271,58 +310,104 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     if (_exchangeMode) {
-      return Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        alignment: WrapAlignment.center,
+      return Row(
         children: [
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+          _action(
+            icon: Icons.swap_horiz,
+            label: 'Swap (${_selectedForExchange.length})',
+            color: Colors.teal,
             onPressed: _selectedForExchange.isEmpty ? null : _confirmExchange,
-            icon: const Icon(Icons.swap_horiz),
-            label: Text('Exchange (${_selectedForExchange.length})'),
           ),
-          OutlinedButton(
+          _action(
+            icon: Icons.close,
+            label: 'Cancel',
+            color: const Color(0xFF546E7A),
             onPressed: () => setState(() {
               _exchangeMode = false;
               _selectedForExchange.clear();
             }),
-            child: const Text('Cancel'),
           ),
         ],
       );
     }
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      alignment: WrapAlignment.center,
+    final hasPending = game.pending.isNotEmpty;
+    return Row(
       children: [
-        ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green.shade700,
-          ),
-          onPressed: game.pending.isEmpty ? null : _play,
-          icon: const Icon(Icons.check),
-          label: const Text('Play'),
+        _action(
+          icon: Icons.check,
+          label: 'Play',
+          color: Colors.green.shade700,
+          onPressed: hasPending ? _play : null,
         ),
-        OutlinedButton.icon(
-          onPressed: game.pending.isEmpty ? null : game.recallAll,
-          icon: const Icon(Icons.undo, color: Colors.white),
-          label: const Text('Recall', style: TextStyle(color: Colors.white)),
+        _action(
+          icon: Icons.lightbulb,
+          label: 'Suggest',
+          color: Colors.amber.shade800,
+          onPressed: _suggest,
         ),
-        OutlinedButton.icon(
+        _action(
+          icon: Icons.undo,
+          label: 'Recall',
+          color: const Color(0xFF546E7A),
+          onPressed: hasPending ? game.recallAll : null,
+        ),
+        _action(
+          icon: Icons.swap_horiz,
+          label: 'Swap',
+          color: const Color(0xFF546E7A),
           onPressed: () => setState(() => _exchangeMode = true),
-          icon: const Icon(Icons.swap_horiz, color: Colors.white),
-          label: const Text('Exchange', style: TextStyle(color: Colors.white)),
         ),
-        OutlinedButton.icon(
+        _action(
+          icon: Icons.skip_next,
+          label: 'Pass',
+          color: const Color(0xFF546E7A),
           onPressed: _confirmPass,
-          icon: const Icon(Icons.skip_next, color: Colors.white),
-          label: const Text('Pass', style: TextStyle(color: Colors.white)),
         ),
       ],
     );
+  }
+
+  /// A compact, equal-width action button (icon over label) for the one-row bar.
+  Widget _action({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback? onPressed,
+  }) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            disabledBackgroundColor: Colors.white12,
+            foregroundColor: Colors.white,
+            disabledForegroundColor: Colors.white38,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          onPressed: onPressed,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20),
+              const SizedBox(height: 2),
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _suggest() {
+    game.suggest();
   }
 
   // --- Actions ---------------------------------------------------------------
