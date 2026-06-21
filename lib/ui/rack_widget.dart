@@ -31,7 +31,14 @@ class RackWidget extends StatelessWidget {
     final tiles = game.availableRackTiles;
     final theme = GameThemeScope.of(context);
 
-    return Container(
+    // Dropping a pending board tile onto the rack recalls it.
+    return DragTarget<Object>(
+      onWillAcceptWithDetails: (d) => d.data is BoardDragData,
+      onAcceptWithDetails: (d) {
+        final data = d.data;
+        if (data is BoardDragData) game.recallTile(data.row, data.col);
+      },
+      builder: (context, candidate, rejected) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
         color: theme.rack,
@@ -65,6 +72,7 @@ class RackWidget extends StatelessWidget {
             ),
           );
         },
+      ),
       ),
     );
   }

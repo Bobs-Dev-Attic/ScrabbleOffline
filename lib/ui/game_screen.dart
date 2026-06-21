@@ -41,7 +41,8 @@ class _GameScreenState extends State<GameScreen> {
         actions: [
           PopupMenuButton<String>(
             tooltip: 'Menu',
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.more_vert, color: Colors.white, size: 26),
+            color: const Color(0xFF2A2A2A),
             onSelected: (value) {
               switch (value) {
                 case 'new':
@@ -59,16 +60,18 @@ class _GameScreenState extends State<GameScreen> {
               PopupMenuItem(
                 value: 'new',
                 child: ListTile(
-                  leading: Icon(Icons.refresh),
-                  title: Text('New Game'),
+                  leading: Icon(Icons.refresh, color: Colors.white),
+                  title: Text('New Game',
+                      style: TextStyle(color: Colors.white)),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
               PopupMenuItem(
                 value: 'settings',
                 child: ListTile(
-                  leading: Icon(Icons.tune),
-                  title: Text('Settings'),
+                  leading: Icon(Icons.tune, color: Colors.white),
+                  title:
+                      Text('Settings', style: TextStyle(color: Colors.white)),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -216,7 +219,7 @@ class _GameScreenState extends State<GameScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: _theme.panel,
+        color: _theme.panel.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(8),
       ),
       child: IntrinsicHeight(
@@ -313,7 +316,9 @@ class _GameScreenState extends State<GameScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: game.gameOver ? const Color(0xFF4A148C) : _theme.panel,
+        color: game.gameOver
+            ? const Color(0xE64A148C)
+            : _theme.panel.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -377,22 +382,10 @@ class _GameScreenState extends State<GameScreen> {
     return Row(
       children: [
         _action(
-          icon: Icons.check,
-          label: 'Play',
-          color: Colors.green.shade700,
-          onPressed: hasPending ? _play : null,
-        ),
-        _action(
-          icon: Icons.lightbulb,
-          label: 'Suggest',
-          color: Colors.amber.shade800,
-          onPressed: _suggest,
-        ),
-        _action(
-          icon: Icons.undo,
-          label: 'Recall',
+          icon: Icons.skip_next,
+          label: 'Pass',
           color: const Color(0xFF546E7A),
-          onPressed: hasPending ? game.recallAll : null,
+          onPressed: _confirmPass,
         ),
         _action(
           icon: Icons.swap_horiz,
@@ -401,10 +394,22 @@ class _GameScreenState extends State<GameScreen> {
           onPressed: () => setState(() => _exchangeMode = true),
         ),
         _action(
-          icon: Icons.skip_next,
-          label: 'Pass',
+          icon: Icons.undo,
+          label: 'Recall',
           color: const Color(0xFF546E7A),
-          onPressed: _confirmPass,
+          onPressed: hasPending ? game.recallAll : null,
+        ),
+        _action(
+          icon: Icons.lightbulb,
+          label: 'Suggest',
+          color: Colors.amber.shade800,
+          onPressed: _suggest,
+        ),
+        _action(
+          icon: Icons.check,
+          label: 'Play',
+          color: Colors.green.shade700,
+          onPressed: hasPending ? _play : null,
         ),
       ],
     );
@@ -422,8 +427,8 @@ class _GameScreenState extends State<GameScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 3),
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            disabledBackgroundColor: Colors.white12,
+            backgroundColor: color.withValues(alpha: 0.85),
+            disabledBackgroundColor: Colors.white10,
             foregroundColor: Colors.white,
             disabledForegroundColor: Colors.white38,
             padding: const EdgeInsets.symmetric(vertical: 8),

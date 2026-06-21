@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:scrabble_offline/engine/ai_player.dart';
 import 'package:scrabble_offline/engine/dictionary.dart';
 import 'package:scrabble_offline/models/tile.dart';
 import 'package:scrabble_offline/state/game_state.dart';
@@ -40,6 +41,7 @@ void main() {
 
       expect(game.currentPlayer.rack.length, before.length);
       expect(game.currentPlayer.rack[3].letter, moved);
+      expect(game.currentPlayer.rackIds.length, before.length);
       expect(
         game.currentPlayer.rack.map((t) => t.letter).toList()..sort(),
         before.toList()..sort(),
@@ -110,6 +112,47 @@ void main() {
       // The rack still holds all seven tiles.
       expect(game.currentPlayer.rack.length, 7);
       expect(game.currentPlayer.rackIds.length, 7);
+    });
+  });
+
+  group('movePending', () {
+    test('relocates a pending tile to another empty cell', () {
+      final game = _game(Dictionary()..loadWords(['CAT']));
+      game.newGame();
+      game.placeTile(0, 7, 7);
+      expect(game.pendingTileAt(7, 7), isNotNull);
+
+      game.movePending(7, 7, 7, 8);
+      expect(game.pendingTileAt(7, 7), isNull);
+      expect(game.pendingTileAt(7, 8), isNotNull);
+    });
+
+    test('will not move onto an occupied cell', () {
+      final game = _game(Dictionary()..loadWords(['CAT']));
+      game.newGame();
+      game.placeTile(0, 7, 7);
+      game.placeTile(1, 7, 8);
+      game.movePending(7, 7, 7, 8); // target taken
+      expect(game.pendingTileAt(7, 7), isNotNull);
+    });
+  });
+
+  group('multiple computer opponents', () {
+    test('builds one human and N computers', () {
+      final game = _game(Dictionary()..loadWords(['CAT']));
+      game.newGame(
+        humanPlayers: 1,
+        computerPlayers: 2,
+        difficulty: AiDifficulty.easy,
+      );
+      expect(game.players.length, 3);
+      expect(game.players[0].isAI, isFalse);
+      expect(game.players[0].name, 'You');
+      expect(game.players[1].isAI, isTrue);
+      expect(game.players[2].isAI, isTrue);
+      expect(game.players[1].name, 'Computer 1');
+      expect(game.players[2].name, 'Computer 2');
+      expect(game.vsComputer, isTrue);
     });
   });
 }

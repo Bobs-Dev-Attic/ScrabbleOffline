@@ -34,7 +34,11 @@ void main() {
       final game =
           GameState(dictionary: dict, persistence: FakePersistence());
 
-      game.newGame(vsComputer: true, difficulty: AiDifficulty.hard);
+      game.newGame(
+        humanPlayers: 1,
+        computerPlayers: 1,
+        difficulty: AiDifficulty.hard,
+      );
       expect(game.currentPlayerIndex, 0, reason: 'human goes first');
       expect(game.isComputerTurn, isFalse);
 
