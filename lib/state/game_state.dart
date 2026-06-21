@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import '../engine/ai_player.dart';
 import '../engine/dictionary.dart';
+import '../engine/move_generator.dart';
 import '../engine/referee.dart';
 import '../models/board.dart';
 import '../models/player.dart';
@@ -25,6 +27,7 @@ class GameState extends ChangeNotifier {
   final Dictionary dictionary;
   final GamePersistence persistence;
   late final ScrabbleReferee referee;
+  late final AiPlayer ai;
 
   GameBoard board = GameBoard();
   TileBag bag = TileBag();
@@ -41,19 +44,46 @@ class GameState extends ChangeNotifier {
   bool gameOver = false;
   int consecutivePasses = 0;
 
+  /// Whether seat 1 is a computer opponent, and how strong it plays.
+  bool vsComputer = false;
+  AiDifficulty aiDifficulty = AiDifficulty.medium;
+
+  /// True while the computer is computing its move (UI shows a "thinking" cue).
+  bool aiThinking = false;
+
+  /// Incremented whenever a new game starts so a pending (delayed) AI turn from
+  /// a previous game is ignored.
+  int _aiToken = 0;
+
   GameState({required this.dictionary, required this.persistence}) {
     referee = ScrabbleReferee(dictionary);
+    ai = AiPlayer(MoveGenerator(dictionary));
   }
 
   Player get currentPlayer => players[currentPlayerIndex];
 
-  /// Starts a fresh two-player pass-and-play game.
-  void newGame({List<String>? playerNames}) {
-    final names = playerNames ?? const ['Player 1', 'Player 2'];
+  /// True when it is the computer's turn (input should be locked).
+  bool get isComputerTurn => !gameOver && currentPlayer.isAI;
+
+  /// Starts a fresh game. When [vsComputer] is true, seat 2 is an AI of the
+  /// given [difficulty]; otherwise it's local pass-and-play.
+  void newGame({
+    List<String>? playerNames,
+    bool vsComputer = false,
+    AiDifficulty difficulty = AiDifficulty.medium,
+  }) {
+    this.vsComputer = vsComputer;
+    aiDifficulty = difficulty;
+    _aiToken++;
+    final names = playerNames ??
+        (vsComputer
+            ? const ['You', 'Computer']
+            : const ['Player 1', 'Player 2']);
     board = GameBoard();
     bag = TileBag();
     players = [
-      for (final n in names) Player(name: n),
+      Player(name: names[0]),
+      Player(name: names[1], isAI: vsComputer),
     ];
     for (final p in players) {
       p.refill(bag.draw);
@@ -62,22 +92,28 @@ class GameState extends ChangeNotifier {
     pending.clear();
     statusMessage = '';
     gameOver = false;
+    aiThinking = false;
     consecutivePasses = 0;
     _persist();
     notifyListeners();
+    _scheduleAiTurnIfNeeded();
   }
 
   /// Restores a saved game snapshot into the controller.
   void restore(SavedGame saved) {
+    _aiToken++;
     board = saved.board;
     bag = saved.bag;
     players = saved.players;
     currentPlayerIndex = saved.currentPlayerIndex;
+    vsComputer = players.any((p) => p.isAI);
     pending.clear();
     statusMessage = 'Game restored.';
     gameOver = false;
+    aiThinking = false;
     consecutivePasses = 0;
     notifyListeners();
+    _scheduleAiTurnIfNeeded();
   }
 
   // --- Turn construction -----------------------------------------------------
@@ -132,6 +168,7 @@ class GameState extends ChangeNotifier {
   /// the UI can animate feedback. Invalid moves leave pending tiles in place.
   MoveResult commitTurn() {
     if (gameOver) return MoveResult.invalid('Game over.');
+    if (isComputerTurn) return MoveResult.invalid('It is the computer\'s turn.');
     final placements = pending.values
         .map((p) => Placement(p.row, p.col, p.tile))
         .toList();
@@ -141,14 +178,19 @@ class GameState extends ChangeNotifier {
       notifyListeners();
       return result;
     }
+    _applyValidatedMove(placements, result);
+    return result;
+  }
 
-    // Commit tiles to the board.
-    for (final p in pending.values) {
+  /// Commits a validated set of placements for the current player: writes tiles
+  /// to the board, updates score and rack, advances the turn, persists, and
+  /// schedules the computer's reply if needed. Shared by humans and the AI.
+  void _applyValidatedMove(List<Placement> placements, MoveResult result) {
+    for (final p in placements) {
       board.cellAt(p.row, p.col).tile = p.tile;
     }
 
-    // Remove used tiles from the rack and refill.
-    final usedTiles = pending.values.map((p) => p.tile).toList();
+    final usedTiles = placements.map((p) => p.tile).toList();
     currentPlayer.removeFromRack(usedTiles);
     currentPlayer.score += result.score;
     currentPlayer.refill(bag.draw);
@@ -165,7 +207,7 @@ class GameState extends ChangeNotifier {
 
     _persist();
     notifyListeners();
-    return result;
+    _scheduleAiTurnIfNeeded();
   }
 
   /// Passes the turn without placing tiles.
@@ -181,6 +223,7 @@ class GameState extends ChangeNotifier {
     }
     _persist();
     notifyListeners();
+    _scheduleAiTurnIfNeeded();
   }
 
   /// Exchanges the given rack tiles for new ones (only when the bag has at
@@ -207,7 +250,53 @@ class GameState extends ChangeNotifier {
     _advanceTurn();
     _persist();
     notifyListeners();
+    _scheduleAiTurnIfNeeded();
     return true;
+  }
+
+  // --- Computer opponent -----------------------------------------------------
+
+  /// If it's the computer's turn, flag "thinking" and run the move after a
+  /// short delay so the player can see the board update first.
+  void _scheduleAiTurnIfNeeded() {
+    if (gameOver || aiThinking || !currentPlayer.isAI) return;
+    aiThinking = true;
+    notifyListeners();
+    final token = _aiToken;
+    Future.delayed(const Duration(milliseconds: 650), () {
+      if (token == _aiToken) _runAiTurn();
+    });
+  }
+
+  void _runAiTurn() {
+    if (gameOver || !currentPlayer.isAI) {
+      aiThinking = false;
+      notifyListeners();
+      return;
+    }
+    final decision = ai.decide(
+      board,
+      currentPlayer.rack,
+      aiDifficulty,
+      canExchange: bag.remaining >= kRackCapacity,
+    );
+    aiThinking = false;
+
+    switch (decision.type) {
+      case AiActionType.play:
+        final move = decision.move!;
+        final result = referee.evaluate(board, move.placements);
+        if (result.valid) {
+          _applyValidatedMove(move.placements, result);
+        } else {
+          pass(); // Safety net; should not happen.
+        }
+      case AiActionType.exchange:
+        // Exchange the whole rack to fish for a playable set.
+        exchange(List<int>.generate(currentPlayer.rack.length, (i) => i));
+      case AiActionType.pass:
+        pass();
+    }
   }
 
   void _advanceTurn() {

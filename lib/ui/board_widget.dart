@@ -76,7 +76,10 @@ class BoardWidget extends StatelessWidget {
 
     return DragTarget<RackDragData>(
       onWillAcceptWithDetails: (_) =>
-          committed == null && pending == null && !game.gameOver,
+          committed == null &&
+          pending == null &&
+          !game.gameOver &&
+          !game.isComputerTurn,
       onAcceptWithDetails: (details) =>
           onDropTile(details.data.rackIndex, row, col, details.data.tile),
       builder: (context, candidate, rejected) {

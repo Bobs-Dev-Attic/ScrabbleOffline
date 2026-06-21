@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'engine/ai_player.dart';
 import 'engine/dictionary.dart';
 import 'state/game_state.dart';
 import 'state/persistence.dart';
@@ -139,6 +140,38 @@ class _HomeScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _startVsComputer(BuildContext context) async {
+    final difficulty = await showDialog<AiDifficulty>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Choose difficulty'),
+        children: [
+          for (final d in AiDifficulty.values)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, d),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(switch (d) {
+                      AiDifficulty.easy => Icons.sentiment_satisfied,
+                      AiDifficulty.medium => Icons.sentiment_neutral,
+                      AiDifficulty.hard => Icons.whatshot,
+                    }),
+                    const SizedBox(width: 12),
+                    Text(d.label, style: const TextStyle(fontSize: 16)),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (difficulty == null || !context.mounted) return;
+    game.newGame(vsComputer: true, difficulty: difficulty);
+    _open(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasSave = game.persistence.hasSavedGame;
@@ -169,8 +202,21 @@ class _HomeScreen extends StatelessWidget {
                   game.newGame();
                   _open(context);
                 },
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('New Game'),
+                icon: const Icon(Icons.people),
+                label: const Text('Pass & Play'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: 220,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  backgroundColor: Colors.lightBlue.shade700,
+                ),
+                onPressed: () => _startVsComputer(context),
+                icon: const Icon(Icons.smart_toy),
+                label: const Text('vs Computer'),
               ),
             ),
             if (hasSave) ...[

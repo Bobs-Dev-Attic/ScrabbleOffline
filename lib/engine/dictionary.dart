@@ -11,6 +11,9 @@ class Dictionary {
   bool get isLoaded => _loaded;
   int get wordCount => _trie.wordCount;
 
+  /// The underlying prefix tree, used by the AI move generator.
+  Trie get trie => _trie;
+
   /// Streams the raw dictionary text from the asset bundle and compiles it into
   /// the prefix tree.
   Future<void> load({String assetPath = 'assets/dictionary.txt'}) async {

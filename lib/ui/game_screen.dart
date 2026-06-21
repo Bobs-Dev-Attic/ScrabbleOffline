@@ -112,18 +112,55 @@ class _GameScreenState extends State<GameScreen> {
         onRecall: game.recallTile,
       );
 
-  Widget _rack() => RackWidget(
-        game: game,
-        exchangeMode: _exchangeMode,
-        selectedForExchange: _selectedForExchange,
-        onExchangeToggle: (idx) => setState(() {
-          if (_selectedForExchange.contains(idx)) {
-            _selectedForExchange.remove(idx);
-          } else {
-            _selectedForExchange.add(idx);
-          }
-        }),
-      );
+  Widget _rack() {
+    if (game.isComputerTurn) return _computerRack();
+    return RackWidget(
+      game: game,
+      exchangeMode: _exchangeMode,
+      selectedForExchange: _selectedForExchange,
+      onExchangeToggle: (idx) => setState(() {
+        if (_selectedForExchange.contains(idx)) {
+          _selectedForExchange.remove(idx);
+        } else {
+          _selectedForExchange.add(idx);
+        }
+      }),
+    );
+  }
+
+  /// Face-down rack shown during the computer's turn (its tiles stay hidden).
+  Widget _computerRack() {
+    final count = game.currentPlayer.rack.length;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF6D4C41),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.center,
+        children: [
+          for (var i = 0; i < count; i++)
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF8D6E63), Color(0xFF5D4037)],
+                ),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFF4E342E)),
+              ),
+              child: const Center(
+                child: Icon(Icons.smart_toy, color: Colors.white54, size: 22),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _scoreboard() {
     return Container(
@@ -145,6 +182,12 @@ class _GameScreenState extends State<GameScreen> {
                       if (i == game.currentPlayerIndex && !game.gameOver)
                         const Icon(Icons.play_arrow,
                             color: Colors.lightGreenAccent, size: 18),
+                      if (game.players[i].isAI)
+                        const Padding(
+                          padding: EdgeInsets.only(left: 2),
+                          child: Icon(Icons.smart_toy,
+                              color: Colors.white54, size: 16),
+                        ),
                       const SizedBox(width: 4),
                       Text(
                         game.players[i].name,
@@ -206,6 +249,24 @@ class _GameScreenState extends State<GameScreen> {
         onPressed: _confirmNewGame,
         icon: const Icon(Icons.refresh),
         label: const Text('New Game'),
+      );
+    }
+
+    if (game.isComputerTurn) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            '${game.currentPlayer.name} is thinking…',
+            style: const TextStyle(color: Colors.white, fontSize: 15),
+          ),
+        ],
       );
     }
 
