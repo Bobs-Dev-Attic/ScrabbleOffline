@@ -3,6 +3,11 @@ import 'tile.dart';
 /// Maximum number of tiles a player may hold on their rack.
 const int kRackCapacity = 7;
 
+/// Monotonic id source giving each physical rack tile a stable identity so the
+/// UI can animate reordering. Ids are ephemeral (not persisted).
+int _rackTileIdSeq = 0;
+int _newTileId() => _rackTileIdSeq++;
+
 /// A player profile tracking score, rack, and whether the seat is AI driven.
 class Player {
   final String name;
@@ -10,19 +15,36 @@ class Player {
   final List<Tile> rack;
   final bool isAI;
 
+  /// Stable per-tile ids, parallel to [rack], used for reorder animations.
+  final List<int> rackIds = [];
+
   Player({
     required this.name,
     this.score = 0,
     List<Tile>? rack,
     this.isAI = false,
-  }) : rack = rack ?? <Tile>[];
+  }) : rack = rack ?? <Tile>[] {
+    for (var i = 0; i < this.rack.length; i++) {
+      rackIds.add(_newTileId());
+    }
+  }
 
   /// Draws tiles from [supplier] until the rack is full (or the supplier is
   /// exhausted). [supplier] returns up to the requested number of tiles.
   void refill(List<Tile> Function(int count) supplier) {
     final needed = kRackCapacity - rack.length;
     if (needed <= 0) return;
-    rack.addAll(supplier(needed));
+    final drawn = supplier(needed);
+    for (final t in drawn) {
+      rack.add(t);
+      rackIds.add(_newTileId());
+    }
+  }
+
+  /// Removes the rack tile (and its id) at [index].
+  void removeRackAt(int index) {
+    rack.removeAt(index);
+    rackIds.removeAt(index);
   }
 
   /// Removes [tiles] from the rack by identity-ish matching (letter + blank
@@ -37,7 +59,7 @@ class Player {
     }
     toRemove.sort((a, b) => b.compareTo(a));
     for (final idx in toRemove) {
-      rack.removeAt(idx);
+      removeRackAt(idx);
     }
     return true;
   }

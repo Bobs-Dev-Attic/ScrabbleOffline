@@ -73,11 +73,12 @@ void main() {
   });
 
   group('suggest', () {
-    test('fills pending with a valid word for the human', () {
+    test('rearranges the rack to spell a word, without touching the board', () {
       final dict = Dictionary()
         ..loadWords(File('assets/dictionary.txt').readAsLinesSync());
       final game = _game(dict);
       game.newGame();
+      // Give the human a known, word-rich rack.
       game.currentPlayer.rack
         ..clear()
         ..addAll(const [
@@ -89,14 +90,26 @@ void main() {
           Tile(letter: 'S', value: 1),
           Tile(letter: 'N', value: 1),
         ]);
+      game.currentPlayer.rackIds
+        ..clear()
+        ..addAll(List.generate(7, (i) => 1000 + i));
 
       final ok = game.suggest();
       expect(ok, isTrue);
-      expect(game.pending, isNotEmpty);
-      // The suggested move must be a legal move when played.
-      final result = game.commitTurn();
-      expect(result.valid, isTrue);
-      expect(result.score, greaterThan(0));
+      // Nothing is placed on the board.
+      expect(game.pending, isEmpty);
+      expect(game.board.isEmpty, isTrue);
+      // The suggested tiles are flagged for the rack animation.
+      expect(game.suggestedIds, isNotEmpty);
+      // The front of the rack now spells a valid dictionary word.
+      final word = game.currentPlayer.rack
+          .take(game.suggestedIds.length)
+          .map((t) => t.letter)
+          .join();
+      expect(dict.isValidWord(word), isTrue, reason: '"$word" should be valid');
+      // The rack still holds all seven tiles.
+      expect(game.currentPlayer.rack.length, 7);
+      expect(game.currentPlayer.rackIds.length, 7);
     });
   });
 }

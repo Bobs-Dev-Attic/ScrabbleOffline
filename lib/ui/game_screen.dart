@@ -4,6 +4,7 @@ import '../models/tile.dart';
 import '../models/tile_bag.dart';
 import '../state/game_state.dart';
 import '../state/settings.dart';
+import 'animated_background.dart';
 import 'board_widget.dart';
 import 'game_theme.dart';
 import 'rack_widget.dart';
@@ -38,33 +39,56 @@ class _GameScreenState extends State<GameScreen> {
         backgroundColor: theme.appBar,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            tooltip: 'Settings',
+          PopupMenuButton<String>(
+            tooltip: 'Menu',
             icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) =>
-                    SettingsScreen(settings: widget.settings, game: game),
+            onSelected: (value) {
+              switch (value) {
+                case 'new':
+                  _confirmNewGame();
+                case 'settings':
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          SettingsScreen(settings: widget.settings, game: game),
+                    ),
+                  );
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'new',
+                child: ListTile(
+                  leading: Icon(Icons.refresh),
+                  title: Text('New Game'),
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'New Game',
-            icon: const Icon(Icons.refresh),
-            onPressed: _confirmNewGame,
+              PopupMenuItem(
+                value: 'settings',
+                child: ListTile(
+                  leading: Icon(Icons.tune),
+                  title: Text('Settings'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),
-      body: AnimatedBuilder(
-        animation: game,
-        builder: (context, _) {
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth > 900;
-              return wide ? _wideLayout() : _narrowLayout();
-            },
-          );
-        },
+      body: AnimatedBackground(
+        theme: theme,
+        child: AnimatedBuilder(
+          animation: game,
+          builder: (context, _) {
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth > 900;
+                return wide ? _wideLayout() : _narrowLayout();
+              },
+            );
+          },
+        ),
       ),
     );
   }

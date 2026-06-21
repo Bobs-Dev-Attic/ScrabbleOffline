@@ -5,6 +5,7 @@ import 'engine/dictionary.dart';
 import 'state/game_state.dart';
 import 'state/persistence.dart';
 import 'state/settings.dart';
+import 'ui/animated_background.dart';
 import 'ui/game_screen.dart';
 import 'ui/game_theme.dart';
 import 'ui/settings_screen.dart';
@@ -194,8 +195,10 @@ class HomeScreen extends StatelessWidget {
     final theme = GameThemeScope.of(context);
     final hasSave = game.persistence.hasSavedGame;
     return Scaffold(
-      backgroundColor: theme.appBar,
-      body: Center(
+      backgroundColor: theme.scaffold,
+      body: AnimatedBackground(
+        theme: theme,
+        child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -258,6 +261,7 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
