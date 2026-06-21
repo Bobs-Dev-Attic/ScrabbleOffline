@@ -19,3 +19,7 @@ flutter pub get
 # --no-web-resources-cdn bundles CanvasKit locally so the app loads with zero
 # external CDN dependencies (truly offline, per the project requirements).
 flutter build web --release --no-web-resources-cdn
+
+# Replace Flutter's no-op service worker with a caching one so the installed
+# PWA launches fully offline (e.g. airplane mode).
+python3 tool/build_sw.py
