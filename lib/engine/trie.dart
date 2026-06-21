@@ -10,6 +10,9 @@ class Trie {
   final TrieNode _root = TrieNode();
   int _wordCount = 0;
 
+  /// Root node, exposed for move-generation traversal.
+  TrieNode get root => _root;
+
   int get wordCount => _wordCount;
 
   /// Inserts a single word into the trie.
