@@ -99,7 +99,15 @@ class BoardWidget extends StatelessWidget {
         ),
       );
     } else {
-      content = _premiumLabel(theme, cellType, size);
+      // Ghost tile: a translucent hint showing where the current Suggest
+      // result would be placed.
+      final ghost = game.ghostAt(row, col);
+      content = ghost != null
+          ? Opacity(
+              opacity: 0.45,
+              child: TileWidget(tile: ghost, size: size, highlighted: true),
+            )
+          : _premiumLabel(theme, cellType, size);
     }
 
     return DragTarget<Object>(
