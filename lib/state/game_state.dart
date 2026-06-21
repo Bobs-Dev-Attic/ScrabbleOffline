@@ -78,26 +78,35 @@ class GameState extends ChangeNotifier {
   /// True when it is the computer's turn (input should be locked).
   bool get isComputerTurn => !gameOver && currentPlayer.isAI;
 
-  /// Starts a fresh game. When [vsComputer] is true, seat 2 is an AI of the
-  /// given [difficulty]; otherwise it's local pass-and-play.
+  /// Starts a fresh game with [humanPlayers] humans and [computerPlayers] AI
+  /// opponents (any mix, up to the board's practical limits). When there are
+  /// computers, all of them play at [difficulty].
   void newGame({
-    List<String>? playerNames,
-    bool vsComputer = false,
+    int humanPlayers = 2,
+    int computerPlayers = 0,
     AiDifficulty difficulty = AiDifficulty.medium,
   }) {
-    this.vsComputer = vsComputer;
+    vsComputer = computerPlayers > 0;
     aiDifficulty = difficulty;
     _aiToken++;
-    final names = playerNames ??
-        (vsComputer
-            ? const ['You', 'Computer']
-            : const ['Player 1', 'Player 2']);
     board = GameBoard();
     bag = TileBag();
-    players = [
-      Player(name: names[0]),
-      Player(name: names[1], isAI: vsComputer),
-    ];
+    players = [];
+
+    // Humans first (a lone human vs computers is simply "You").
+    if (vsComputer && humanPlayers == 1) {
+      players.add(Player(name: 'You'));
+    } else {
+      for (var i = 0; i < humanPlayers; i++) {
+        players.add(Player(name: 'Player ${i + 1}'));
+      }
+    }
+    // Then the computer opponents.
+    for (var i = 0; i < computerPlayers; i++) {
+      final name = computerPlayers == 1 ? 'Computer' : 'Computer ${i + 1}';
+      players.add(Player(name: name, isAI: true));
+    }
+
     for (final p in players) {
       p.refill(bag.draw);
     }
@@ -171,6 +180,20 @@ class GameState extends ChangeNotifier {
   /// Recalls a single pending tile back to the rack (rollback for one cell).
   void recallTile(int row, int col) {
     pending.remove('$row,$col');
+    notifyListeners();
+  }
+
+  /// Moves an in-progress (pending) tile from one cell to another empty cell,
+  /// letting the player adjust placement before committing.
+  void movePending(int fromRow, int fromCol, int toRow, int toCol) {
+    final from = '$fromRow,$fromCol';
+    final to = '$toRow,$toCol';
+    final p = pending[from];
+    if (p == null) return;
+    if (from == to) return;
+    if (!board.isEmptyAt(toRow, toCol) || pending.containsKey(to)) return;
+    pending.remove(from);
+    pending[to] = PendingPlacement(toRow, toCol, p.tile, p.rackIndex);
     notifyListeners();
   }
 

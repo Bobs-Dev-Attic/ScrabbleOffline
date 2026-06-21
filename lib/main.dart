@@ -186,7 +186,38 @@ class HomeScreen extends StatelessWidget {
       ),
     );
     if (difficulty == null || !context.mounted) return;
-    game.newGame(vsComputer: true, difficulty: difficulty);
+
+    final opponents = await showDialog<int>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('How many computer opponents?'),
+        children: [
+          for (final n in [1, 2, 3])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, n),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    for (var i = 0; i < n; i++)
+                      const Icon(Icons.smart_toy, size: 20),
+                    const SizedBox(width: 12),
+                    Text('$n computer${n > 1 ? 's' : ''}',
+                        style: const TextStyle(fontSize: 16)),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (opponents == null || !context.mounted) return;
+
+    game.newGame(
+      humanPlayers: 1,
+      computerPlayers: opponents,
+      difficulty: difficulty,
+    );
     _open(context);
   }
 

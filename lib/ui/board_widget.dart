@@ -81,22 +81,42 @@ class BoardWidget extends StatelessWidget {
             )
           : tileWidget;
     } else if (pending != null) {
-      content = GestureDetector(
-        onTap: () => onRecall(row, col),
-        child: TileWidget(tile: pending, size: size, highlighted: true),
+      // Pending tiles can be dragged to another cell to adjust placement, or
+      // tapped to recall them to the rack.
+      content = Draggable<BoardDragData>(
+        data: BoardDragData(row, col),
+        feedback: Material(
+          color: Colors.transparent,
+          child: GameThemeScope(
+            theme: theme,
+            child: TileWidget(tile: pending, size: size * 1.12, highlighted: true),
+          ),
+        ),
+        childWhenDragging: _premiumLabel(theme, cellType, size),
+        child: GestureDetector(
+          onTap: () => onRecall(row, col),
+          child: TileWidget(tile: pending, size: size, highlighted: true),
+        ),
       );
     } else {
       content = _premiumLabel(theme, cellType, size);
     }
 
-    return DragTarget<RackDragData>(
-      onWillAcceptWithDetails: (_) =>
-          committed == null &&
-          pending == null &&
-          !game.gameOver &&
-          !game.isComputerTurn,
-      onAcceptWithDetails: (details) =>
-          onDropTile(details.data.rackIndex, row, col, details.data.tile),
+    return DragTarget<Object>(
+      onWillAcceptWithDetails: (details) {
+        if (committed != null || pending != null) return false;
+        if (game.gameOver || game.isComputerTurn) return false;
+        final d = details.data;
+        return d is RackDragData || d is BoardDragData;
+      },
+      onAcceptWithDetails: (details) {
+        final d = details.data;
+        if (d is RackDragData) {
+          onDropTile(d.rackIndex, row, col, d.tile);
+        } else if (d is BoardDragData) {
+          game.movePending(d.row, d.col, row, col);
+        }
+      },
       builder: (context, candidate, rejected) {
         final hovering = candidate.isNotEmpty;
         return Container(
@@ -168,6 +188,13 @@ class RackDragData {
   final int rackIndex;
   final Tile tile;
   const RackDragData(this.rackIndex, this.tile);
+}
+
+/// Payload carried when dragging an already-placed pending tile on the board.
+class BoardDragData {
+  final int row;
+  final int col;
+  const BoardDragData(this.row, this.col);
 }
 
 /// Animates a freshly placed tile dropping onto the board. [order] staggers
