@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../models/tile.dart';
+import 'game_theme.dart';
 
-/// Visual representation of a single Scrabble tile.
+/// Visual representation of a single Scrabble tile, colored by the active theme.
 class TileWidget extends StatelessWidget {
   final Tile tile;
   final double size;
@@ -17,28 +18,34 @@ class TileWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = GameThemeScope.of(context);
     final display = tile.isUnassignedBlank ? '' : tile.letter;
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFF6E2B3), Color(0xFFE9C883)],
-        ),
+        gradient: theme.richDecoration
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: theme.tileGradient,
+              )
+            : null,
+        color: theme.richDecoration ? null : theme.tileGradient.first,
         borderRadius: BorderRadius.circular(size * 0.12),
         border: Border.all(
-          color: highlighted ? Colors.orange.shade700 : const Color(0xFFB5965A),
+          color: highlighted ? theme.accent : theme.tileBorder,
           width: highlighted ? 2 : 1,
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x55000000),
-            blurRadius: 2,
-            offset: Offset(1, 1),
-          ),
-        ],
+        boxShadow: theme.richDecoration
+            ? const [
+                BoxShadow(
+                  color: Color(0x55000000),
+                  blurRadius: 2,
+                  offset: Offset(1, 1),
+                ),
+              ]
+            : null,
       ),
       child: Stack(
         children: [
@@ -48,7 +55,7 @@ class TileWidget extends StatelessWidget {
               style: TextStyle(
                 fontSize: size * 0.5,
                 fontWeight: FontWeight.bold,
-                color: const Color(0xFF3A2E14),
+                color: theme.tileText,
               ),
             ),
           ),
@@ -61,7 +68,7 @@ class TileWidget extends StatelessWidget {
                 style: TextStyle(
                   fontSize: size * 0.22,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF5A4A22),
+                  color: theme.tileValueText,
                 ),
               ),
             ),
