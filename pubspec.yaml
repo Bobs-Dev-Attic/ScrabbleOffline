@@ -21,3 +21,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/dictionary.txt
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Variable.ttf
