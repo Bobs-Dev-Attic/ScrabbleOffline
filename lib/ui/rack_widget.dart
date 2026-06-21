@@ -39,7 +39,7 @@ class RackWidget extends StatelessWidget {
         if (data is BoardDragData) game.recallTile(data.row, data.col);
       },
       builder: (context, candidate, rejected) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       decoration: BoxDecoration(
         color: theme.rack,
         borderRadius: BorderRadius.circular(8),
