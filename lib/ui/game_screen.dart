@@ -133,17 +133,17 @@ class _GameScreenState extends State<GameScreen> {
 
   Widget _narrowLayout() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Column(
         children: [
           _scoreboard(),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           _statusBar(),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           AspectRatio(aspectRatio: 1, child: _boardWidget()),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _rack(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _controls(),
         ],
       ),
@@ -176,7 +176,7 @@ class _GameScreenState extends State<GameScreen> {
   Widget _computerRack() {
     final count = game.currentPlayer.rack.length;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       decoration: BoxDecoration(
         color: _theme.rack,
         borderRadius: BorderRadius.circular(8),
@@ -217,7 +217,7 @@ class _GameScreenState extends State<GameScreen> {
   /// Compact single-row scoreboard: one column per player plus a bag column.
   Widget _scoreboard() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: _theme.panel.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(8),
@@ -340,7 +340,7 @@ class _GameScreenState extends State<GameScreen> {
   Widget _statusBox(String text, Color color, {bool bold = false}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(6),
@@ -461,7 +461,7 @@ class _GameScreenState extends State<GameScreen> {
             disabledBackgroundColor: Colors.white10,
             foregroundColor: foreground,
             disabledForegroundColor: Colors.white38,
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
