@@ -96,12 +96,22 @@ class BoardWidget extends StatelessWidget {
   }
 
   Widget _premiumLabel(CellType type, double size) {
+    // The center uses a Material icon (bundled locally) rather than a unicode
+    // star, which would otherwise trigger a symbol-font fetch from a CDN.
+    if (type == CellType.center) {
+      return FittedBox(
+        child: Padding(
+          padding: const EdgeInsets.all(3),
+          child: Icon(Icons.star, color: Colors.white, size: size * 0.6),
+        ),
+      );
+    }
     final label = switch (type) {
       CellType.tripleWord => 'TW',
       CellType.doubleWord => 'DW',
       CellType.tripleLetter => 'TL',
       CellType.doubleLetter => 'DL',
-      CellType.center => '★',
+      CellType.center => '',
       CellType.standard => '',
     };
     if (label.isEmpty) return const SizedBox.shrink();

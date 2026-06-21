@@ -16,4 +16,6 @@ export PATH="$PATH:$FLUTTER_DIR/bin"
 
 flutter config --enable-web --no-analytics
 flutter pub get
-flutter build web --release
+# --no-web-resources-cdn bundles CanvasKit locally so the app loads with zero
+# external CDN dependencies (truly offline, per the project requirements).
+flutter build web --release --no-web-resources-cdn

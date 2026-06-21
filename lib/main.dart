@@ -23,6 +23,8 @@ class ScrabbleApp extends StatelessWidget {
           seedColor: const Color(0xFF1B5E20),
           brightness: Brightness.dark,
         ),
+        // Bundled locally so the app never fetches fonts from a CDN at runtime.
+        fontFamily: 'Roboto',
         useMaterial3: true,
       ),
       home: const BootstrapScreen(),
