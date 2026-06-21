@@ -136,14 +136,23 @@ void main() {
         ..clear()
         ..addAll(List.generate(7, (i) => 2000 + i));
 
-      // Press Suggest several times; it should cycle through distinct words.
-      final seen = <String>{};
+      // Press Suggest several times; it should place ghost tiles and cycle
+      // through different spots/words.
+      final seenPlacements = <String>{};
       for (var i = 0; i < 6; i++) {
         game.suggest();
-        seen.add(game.statusMessage);
+        expect(game.ghosts, isNotEmpty, reason: 'ghost tiles should be shown');
+        // No real tiles are placed on the board.
+        expect(game.pending, isEmpty);
+        final sig = (game.ghosts.entries
+                .map((e) => '${e.key}:${e.value.letter}')
+                .toList()
+              ..sort())
+            .join('|');
+        seenPlacements.add(sig);
       }
-      expect(seen.length, greaterThanOrEqualTo(3),
-          reason: 'repeated Suggest should cycle through different words');
+      expect(seenPlacements.length, greaterThanOrEqualTo(3),
+          reason: 'repeated Suggest should cycle through different placements');
     });
 
     test('previewMove reports a live score for a valid in-progress move', () {

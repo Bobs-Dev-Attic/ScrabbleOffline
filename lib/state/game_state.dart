@@ -68,8 +68,14 @@ class GameState extends ChangeNotifier {
   int suggestSerial = 0;
   Set<int> suggestedIds = {};
 
-  /// Cycle of distinct suggested words; pressing Suggest repeatedly advances
-  /// through them. Regenerated when the rack/turn/board changes.
+  /// Ghost tiles showing where the current suggestion would be placed on the
+  /// board (keyed by "row,col"). Rendered translucently as a placement hint.
+  Map<String, Tile> ghosts = {};
+  Tile? ghostAt(int row, int col) => ghosts['$row,$col'];
+
+  /// Cycle of suggested moves; pressing Suggest repeatedly advances through
+  /// them (different words and positions). Regenerated when the rack/turn/board
+  /// changes.
   List<GeneratedMove> _suggestionCycle = [];
   int _suggestionIndex = 0;
   String _suggestionSignature = '';
@@ -125,6 +131,7 @@ class GameState extends ChangeNotifier {
     lastPlaced = {};
     lastPlacedOrder = {};
     suggestedIds = {};
+    ghosts = {};
     _suggestionCycle = [];
     _suggestionSignature = '';
     _suggestionIndex = 0;
@@ -149,6 +156,7 @@ class GameState extends ChangeNotifier {
     lastPlaced = {};
     lastPlacedOrder = {};
     suggestedIds = {};
+    ghosts = {};
     _suggestionCycle = [];
     _suggestionSignature = '';
     _suggestionIndex = 0;
@@ -212,6 +220,7 @@ class GameState extends ChangeNotifier {
   /// Recalls all pending tiles — the full rollback routine.
   void recallAll() {
     pending.clear();
+    ghosts = {};
     statusMessage = '';
     notifyListeners();
   }
@@ -264,17 +273,13 @@ class GameState extends ChangeNotifier {
         notifyListeners();
         return false;
       }
-      // Keep the best move per distinct word, ordered by score, so repeated
-      // presses cycle through different words.
-      final byWord = <String, GeneratedMove>{};
-      for (final m in moves) {
-        final ex = byWord[m.mainWord];
-        if (ex == null || m.score > ex.score) byWord[m.mainWord] = m;
-      }
-      _suggestionCycle = byWord.values.toList()
+      // Order all candidate placements by score (highest first) so repeated
+      // presses cycle through the best spots — including the same word in
+      // different positions — with ghost tiles showing each one.
+      _suggestionCycle = [...moves]
         ..sort((a, b) => b.score.compareTo(a.score));
-      if (_suggestionCycle.length > 30) {
-        _suggestionCycle = _suggestionCycle.sublist(0, 30);
+      if (_suggestionCycle.length > 25) {
+        _suggestionCycle = _suggestionCycle.sublist(0, 25);
       }
       _suggestionSignature = sig;
       _suggestionIndex = 0;
@@ -330,11 +335,17 @@ class GameState extends ChangeNotifier {
       ..clear()
       ..addAll(newIds);
 
+    // Ghost tiles show exactly where this suggestion would be placed.
+    ghosts = {
+      for (final p in best.placements) '${p.row},${p.col}': p.tile,
+    };
+
     suggestedIds = newIds.take(usedOrder.length).toSet();
     suggestSerial++;
     final n = _suggestionCycle.length;
     statusMessage =
-        'Try ${_suggestionIndex + 1}/$n: ${best.mainWord} for ${best.score}';
+        'Try ${_suggestionIndex + 1}/$n: ${best.mainWord} for ${best.score}'
+        ' — tap Suggest for other spots';
     notifyListeners();
   }
 
@@ -405,6 +416,7 @@ class GameState extends ChangeNotifier {
         '${result.isBingo ? ' — BINGO! +$kBingoBonus' : ''} • $summary';
 
     pending.clear();
+    ghosts = {};
     consecutivePasses = 0;
 
     _checkGameOver();
