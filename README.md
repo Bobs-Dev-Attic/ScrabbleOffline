@@ -71,3 +71,24 @@ server functions are required.
 
 Replace `assets/dictionary.txt` with any newline-delimited word list (uppercase,
 2–15 letters). It is compiled into the Trie at startup.
+
+## Developing from a mobile device
+
+This repo is set up so the whole loop runs in the cloud — no local toolchain
+needed. You drive it from the Claude Code web/mobile app.
+
+- **Zero setup per session.** A `SessionStart` hook
+  (`.claude/hooks/session-start.sh`) auto-installs the Flutter SDK and runs
+  `flutter pub get` when a web session starts, so builds, tests, and lints are
+  ready immediately. It only runs in web sessions and is idempotent.
+- **The dev loop:** describe a change → Claude edits code → runs
+  `flutter analyze` + `flutter test` → `flutter build web --release
+  --no-web-resources-cdn` → commits and pushes.
+- **See it without running anything.** Claude can render the built app in a
+  headless browser and send you a screenshot in chat, so you can review UI
+  changes on your phone.
+- **Deploy = push to `main`.** Vercel auto-builds on push; Claude verifies the
+  live deployment (and reads build logs to diagnose failures) via the Vercel
+  connector.
+- **Tip:** keep requests small and specific — easier to review on a phone and
+  faster to verify.
