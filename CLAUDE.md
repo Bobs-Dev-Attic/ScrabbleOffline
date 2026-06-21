@@ -71,8 +71,8 @@ A 100% offline, standalone Scrabble game built with Flutter Web and optimized fo
 ---
 
 ## Development Roadmap
-- [ ] **Phase 1:** Core Pure-Dart Models (`Tile`, `TileBag`, `Player`, `GameBoard`).
-- [ ] **Phase 2:** Offline Trie compilation utility and asset streaming.
-- [ ] **Phase 3:** Referee validation logic and cross-word score multipliers.
-- [ ] **Phase 4:** Interactivity grid UI layer, drag-and-drop states.
-- [ ] **Phase 5:** Hive local storage adaptation layer and state reload routines.
+- [x] **Phase 1:** Core Pure-Dart Models (`Tile`, `TileBag`, `Player`, `GameBoard`).
+- [x] **Phase 2:** Offline Trie compilation utility and asset streaming.
+- [x] **Phase 3:** Referee validation logic and cross-word score multipliers.
+- [x] **Phase 4:** Interactivity grid UI layer, drag-and-drop states.
+- [x] **Phase 5:** Hive local storage adaptation layer and state reload routines.
