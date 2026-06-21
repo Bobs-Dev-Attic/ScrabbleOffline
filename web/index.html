@@ -63,13 +63,45 @@
       return (choice && choice.outcome) ? choice.outcome : 'dismissed';
     };
 
+    // ---- Offline cache state + update detection ----
+    window.pwaIsOnline = function () { return navigator.onLine !== false; };
+    // Controlled by the SW => the app shell + assets are cached for offline use.
+    window.pwaOfflineReady = function () { return !!navigator.serviceWorker.controller; };
+    window.__swReg = null;
+    window.__swUpdate = false;
+    window.__applyingUpdate = false;
+    window.pwaUpdateAvailable = function () { return window.__swUpdate === true; };
+    window.pwaCheckForUpdate = function () {
+      try { if (window.__swReg) window.__swReg.update(); } catch (e) {}
+    };
+    window.pwaApplyUpdate = function () {
+      var r = window.__swReg;
+      if (r && r.waiting) { window.__applyingUpdate = true; r.waiting.postMessage('SKIP_WAITING'); }
+    };
+
     // Register the offline caching service worker ourselves. Flutter's loader
     // only refreshes an existing registration (and ships a no-op worker), so a
     // fresh install would otherwise have no offline cache.
     if ('serviceWorker' in navigator) {
+      var __reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        // Only reload when the user explicitly applied an update.
+        if (window.__applyingUpdate && !__reloaded) { __reloaded = true; window.location.reload(); }
+      });
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('flutter_service_worker.js')
-          .catch(function (e) { console.warn('SW registration failed:', e); });
+        navigator.serviceWorker.register('flutter_service_worker.js').then(function (reg) {
+          window.__swReg = reg;
+          if (reg.waiting && navigator.serviceWorker.controller) window.__swUpdate = true;
+          reg.addEventListener('updatefound', function () {
+            var nw = reg.installing;
+            if (!nw) return;
+            nw.addEventListener('statechange', function () {
+              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                window.__swUpdate = true;
+              }
+            });
+          });
+        }).catch(function (e) { console.warn('SW registration failed:', e); });
       });
     }
   </script>

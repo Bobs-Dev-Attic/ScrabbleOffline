@@ -81,6 +81,24 @@ class GameTheme {
         scaffoldBackgroundColor: scaffold,
         fontFamily: 'Roboto',
         useMaterial3: true,
+        // Dialogs are a clean white card with a soft border + shadow, readable
+        // on every theme.
+        dialogTheme: const DialogThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 12,
+          shadowColor: Color(0x66000000),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(18)),
+            side: BorderSide(color: Color(0xFFB5965A), width: 1.5),
+          ),
+          titleTextStyle: TextStyle(
+            color: Color(0xFF22311F),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+          contentTextStyle: TextStyle(color: Color(0xFF3A463E), fontSize: 15),
+        ),
       );
 
   static GameTheme forId(AppThemeId id) => switch (id) {

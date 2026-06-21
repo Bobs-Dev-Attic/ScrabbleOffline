@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'engine/ai_player.dart';
@@ -146,10 +148,49 @@ class _ErrorScreen extends StatelessWidget {
 }
 
 /// Landing screen offering New Game / Continue / Settings.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final GameState game;
   final SettingsController settings;
   const HomeScreen({super.key, required this.game, required this.settings});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  GameState get game => widget.game;
+  SettingsController get settings => widget.settings;
+
+  Timer? _pwaTimer;
+  bool _offlineReady = false;
+  bool _updateAvailable = false;
+  int _ticks = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Poll the PWA cache/update state so the indicator stays current.
+    pwaCheckForUpdate();
+    _pwaTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      _ticks++;
+      // Re-check the server for updates occasionally while online.
+      if (_ticks % 15 == 0 && pwaIsOnline()) pwaCheckForUpdate();
+      final ready = pwaOfflineReady();
+      final update = pwaUpdateAvailable();
+      if (ready != _offlineReady || update != _updateAvailable) {
+        setState(() {
+          _offlineReady = ready;
+          _updateAvailable = update;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pwaTimer?.cancel();
+    super.dispose();
+  }
 
   void _open(BuildContext context) {
     Navigator.of(context).push(
@@ -160,6 +201,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   Future<void> _startVsComputer(BuildContext context) async {
+    const ink = Color(0xFF3A463E);
     final difficulty = await showDialog<AiDifficulty>(
       context: context,
       builder: (ctx) => SimpleDialog(
@@ -169,16 +211,20 @@ class HomeScreen extends StatelessWidget {
             SimpleDialogOption(
               onPressed: () => Navigator.pop(ctx, d),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
                   children: [
-                    Icon(switch (d) {
-                      AiDifficulty.easy => Icons.sentiment_satisfied,
-                      AiDifficulty.medium => Icons.sentiment_neutral,
-                      AiDifficulty.hard => Icons.whatshot,
-                    }),
-                    const SizedBox(width: 12),
-                    Text(d.label, style: const TextStyle(fontSize: 16)),
+                    Icon(
+                      switch (d) {
+                        AiDifficulty.easy => Icons.sentiment_satisfied,
+                        AiDifficulty.medium => Icons.sentiment_neutral,
+                        AiDifficulty.hard => Icons.whatshot,
+                      },
+                      color: const Color(0xFF1B5E20),
+                    ),
+                    const SizedBox(width: 14),
+                    Text(d.label,
+                        style: const TextStyle(fontSize: 16, color: ink)),
                   ],
                 ),
               ),
@@ -197,14 +243,24 @@ class HomeScreen extends StatelessWidget {
             SimpleDialogOption(
               onPressed: () => Navigator.pop(ctx, n),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
                   children: [
-                    for (var i = 0; i < n; i++)
-                      const Icon(Icons.smart_toy, size: 20),
-                    const SizedBox(width: 12),
+                    // Fixed-width icon column so every label starts at the
+                    // same x (consistent indentation).
+                    SizedBox(
+                      width: 78,
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < n; i++)
+                            const Icon(Icons.smart_toy,
+                                size: 20, color: Color(0xFF1B5E20)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     Text('$n computer${n > 1 ? 's' : ''}',
-                        style: const TextStyle(fontSize: 16)),
+                        style: const TextStyle(fontSize: 16, color: ink)),
                   ],
                 ),
               ),
@@ -246,7 +302,9 @@ class HomeScreen extends StatelessWidget {
               '${settings.permissiveDictionary ? ' + expanded' : ''}',
               style: const TextStyle(color: Colors.white70),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 16),
+            _pwaStatusChip(),
+            const SizedBox(height: 24),
             _homeButton(
               context,
               icon: Icons.people,
@@ -306,6 +364,69 @@ class HomeScreen extends StatelessWidget {
         ),
         ),
       ),
+    );
+  }
+
+  /// Small status chip showing offline-cache readiness and update availability.
+  Widget _pwaStatusChip() {
+    if (_updateAvailable) {
+      return _chip(
+        icon: Icons.system_update_alt,
+        label: 'Update available — tap to update',
+        color: Colors.amber.shade700,
+        onTap: pwaApplyUpdate,
+      );
+    }
+    if (_offlineReady) {
+      return _chip(
+        icon: Icons.cloud_done,
+        label: 'Ready to play offline',
+        color: Colors.green.shade600,
+      );
+    }
+    return _chip(
+      icon: null,
+      label: 'Preparing offline…',
+      color: Colors.white24,
+      showSpinner: true,
+    );
+  }
+
+  Widget _chip({
+    required IconData? icon,
+    required String label,
+    required Color color,
+    VoidCallback? onTap,
+    bool showSpinner = false,
+  }) {
+    final content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showSpinner)
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            )
+          else if (icon != null)
+            Icon(icon, size: 16, color: Colors.white),
+          const SizedBox(width: 8),
+          Text(label,
+              style: const TextStyle(color: Colors.white, fontSize: 13)),
+        ],
+      ),
+    );
+    if (onTap == null) return content;
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: content,
     );
   }
 

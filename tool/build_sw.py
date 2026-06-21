@@ -58,7 +58,8 @@ const CACHE = 'scrabble-offline-%s';
 const RESOURCES = %s;
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  // No skipWaiting(): a new version waits so the app can show "update available".
+  // (On a first install there is no active worker, so it activates immediately.)
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     // Cache individually so one failure doesn't abort the whole install.
@@ -72,6 +73,10 @@ self.addEventListener('activate', (event) => {
     await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {
