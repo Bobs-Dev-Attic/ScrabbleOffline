@@ -68,6 +68,12 @@ class GameState extends ChangeNotifier {
   int suggestSerial = 0;
   Set<int> suggestedIds = {};
 
+  /// Cycle of distinct suggested words; pressing Suggest repeatedly advances
+  /// through them. Regenerated when the rack/turn/board changes.
+  List<GeneratedMove> _suggestionCycle = [];
+  int _suggestionIndex = 0;
+  String _suggestionSignature = '';
+
   GameState({required this.dictionary, required this.persistence}) {
     referee = ScrabbleReferee(dictionary);
     ai = AiPlayer(MoveGenerator(dictionary));
@@ -119,6 +125,9 @@ class GameState extends ChangeNotifier {
     lastPlaced = {};
     lastPlacedOrder = {};
     suggestedIds = {};
+    _suggestionCycle = [];
+    _suggestionSignature = '';
+    _suggestionIndex = 0;
     _persist();
     notifyListeners();
     _scheduleAiTurnIfNeeded();
@@ -140,6 +149,9 @@ class GameState extends ChangeNotifier {
     lastPlaced = {};
     lastPlacedOrder = {};
     suggestedIds = {};
+    _suggestionCycle = [];
+    _suggestionSignature = '';
+    _suggestionIndex = 0;
     notifyListeners();
     _scheduleAiTurnIfNeeded();
   }
@@ -241,16 +253,53 @@ class GameState extends ChangeNotifier {
   bool suggest() {
     if (gameOver || isComputerTurn) return false;
     recallAll();
-    final moves = ai.generator.generate(board, currentPlayer.rack);
-    if (moves.isEmpty) {
-      statusMessage = 'No word found — try exchanging tiles.';
-      notifyListeners();
-      return false;
-    }
-    moves.sort((a, b) => b.score.compareTo(a.score));
-    final best = moves.first;
 
-    // Rack indices used by the suggested word, in the order they appear.
+    final sig = _suggestionSignatureValue();
+    if (sig != _suggestionSignature || _suggestionCycle.isEmpty) {
+      final moves = ai.generator.generate(board, currentPlayer.rack);
+      if (moves.isEmpty) {
+        _suggestionCycle = [];
+        _suggestionSignature = sig;
+        statusMessage = 'No word found — try exchanging tiles.';
+        notifyListeners();
+        return false;
+      }
+      // Keep the best move per distinct word, ordered by score, so repeated
+      // presses cycle through different words.
+      final byWord = <String, GeneratedMove>{};
+      for (final m in moves) {
+        final ex = byWord[m.mainWord];
+        if (ex == null || m.score > ex.score) byWord[m.mainWord] = m;
+      }
+      _suggestionCycle = byWord.values.toList()
+        ..sort((a, b) => b.score.compareTo(a.score));
+      if (_suggestionCycle.length > 30) {
+        _suggestionCycle = _suggestionCycle.sublist(0, 30);
+      }
+      _suggestionSignature = sig;
+      _suggestionIndex = 0;
+    } else {
+      _suggestionIndex = (_suggestionIndex + 1) % _suggestionCycle.length;
+    }
+
+    _applySuggestion(_suggestionCycle[_suggestionIndex]);
+    return true;
+  }
+
+  /// Signature of the inputs that determine the suggestion set: turn, board
+  /// progress, and the rack's letters (order-independent).
+  String _suggestionSignatureValue() {
+    final letters = (currentPlayer.rack
+            .map((t) => t.isBlank ? '_' : t.letter)
+            .toList()
+          ..sort())
+        .join();
+    return '$currentPlayerIndex|$moveSerial|$letters';
+  }
+
+  /// Rearranges the rack so [best]'s letters lead, in word order, and flags
+  /// them for the rack animation.
+  void _applySuggestion(GeneratedMove best) {
     final usedSet = <int>{};
     final usedOrder = <int>[];
     for (final p in best.placements) {
@@ -258,7 +307,7 @@ class GameState extends ChangeNotifier {
       if (idx == -1) {
         statusMessage = 'Could not build a suggestion.';
         notifyListeners();
-        return false;
+        return;
       }
       usedSet.add(idx);
       usedOrder.add(idx);
@@ -283,9 +332,10 @@ class GameState extends ChangeNotifier {
 
     suggestedIds = newIds.take(usedOrder.length).toSet();
     suggestSerial++;
-    statusMessage = 'Try: ${best.mainWord} for ${best.score}';
+    final n = _suggestionCycle.length;
+    statusMessage =
+        'Try ${_suggestionIndex + 1}/$n: ${best.mainWord} for ${best.score}';
     notifyListeners();
-    return true;
   }
 
   int _matchRackIndex(Tile placed, Set<int> used) {
@@ -297,6 +347,16 @@ class GameState extends ChangeNotifier {
       if (!placed.isBlank && !t.isBlank && t.letter == placed.letter) return i;
     }
     return -1;
+  }
+
+  /// Evaluates the in-progress placement without committing, so the UI can show
+  /// a live potential score. Returns an invalid result when nothing is placed.
+  MoveResult previewMove() {
+    final placements = pending.values
+        .map((p) => Placement(p.row, p.col, p.tile))
+        .toList();
+    if (placements.isEmpty) return MoveResult.invalid('');
+    return referee.evaluate(board, placements);
   }
 
   // --- Turn resolution -------------------------------------------------------

@@ -309,21 +309,49 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _statusBar() {
+    // While the player is placing tiles, show the live potential score.
+    if (game.pending.isNotEmpty && !game.isComputerTurn) {
+      final preview = game.previewMove();
+      if (preview.valid) {
+        final words = preview.words.map((w) => '${w.word} ${w.score}').join(' · ');
+        return _statusBox(
+          '+${preview.score}${preview.isBingo ? '  BINGO!' : ''}   $words',
+          _theme.accent.withValues(alpha: 0.30),
+          bold: true,
+        );
+      }
+      return _statusBox(
+        preview.error?.isNotEmpty == true ? preview.error! : 'Keep placing…',
+        _theme.panel.withValues(alpha: 0.55),
+      );
+    }
+
     if (game.statusMessage.isEmpty) {
       return const SizedBox(height: 4);
     }
+    return _statusBox(
+      game.statusMessage,
+      game.gameOver
+          ? const Color(0xE64A148C)
+          : _theme.panel.withValues(alpha: 0.72),
+    );
+  }
+
+  Widget _statusBox(String text, Color color, {bool bold = false}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: game.gameOver
-            ? const Color(0xE64A148C)
-            : _theme.panel.withValues(alpha: 0.72),
+        color: color,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        game.statusMessage,
-        style: const TextStyle(color: Colors.white, fontSize: 14),
+        text,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+        ),
         textAlign: TextAlign.center,
       ),
     );
@@ -400,9 +428,10 @@ class _GameScreenState extends State<GameScreen> {
           onPressed: hasPending ? game.recallAll : null,
         ),
         _action(
-          icon: Icons.lightbulb,
+          icon: Icons.auto_awesome,
           label: 'Suggest',
-          color: Colors.amber.shade800,
+          color: Colors.amber.shade600,
+          foreground: Colors.black87,
           onPressed: _suggest,
         ),
         _action(
@@ -421,6 +450,7 @@ class _GameScreenState extends State<GameScreen> {
     required String label,
     required Color color,
     required VoidCallback? onPressed,
+    Color foreground = Colors.white,
   }) {
     return Expanded(
       child: Padding(
@@ -429,7 +459,7 @@ class _GameScreenState extends State<GameScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: color.withValues(alpha: 0.85),
             disabledBackgroundColor: Colors.white10,
-            foregroundColor: Colors.white,
+            foregroundColor: foreground,
             disabledForegroundColor: Colors.white38,
             padding: const EdgeInsets.symmetric(vertical: 8),
             shape: RoundedRectangleBorder(

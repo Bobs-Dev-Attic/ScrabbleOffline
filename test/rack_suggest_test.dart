@@ -115,6 +115,64 @@ void main() {
     });
   });
 
+  group('suggest cycling and preview', () {
+    test('repeated suggest cycles through different words', () {
+      final dict = Dictionary()
+        ..loadWords(File('assets/dictionary.txt').readAsLinesSync());
+      final game = _game(dict);
+      game.newGame();
+      game.currentPlayer.rack
+        ..clear()
+        ..addAll(const [
+          Tile(letter: 'C', value: 3),
+          Tile(letter: 'A', value: 1),
+          Tile(letter: 'R', value: 1),
+          Tile(letter: 'E', value: 1),
+          Tile(letter: 'S', value: 1),
+          Tile(letter: 'T', value: 1),
+          Tile(letter: 'O', value: 1),
+        ]);
+      game.currentPlayer.rackIds
+        ..clear()
+        ..addAll(List.generate(7, (i) => 2000 + i));
+
+      // Press Suggest several times; it should cycle through distinct words.
+      final seen = <String>{};
+      for (var i = 0; i < 6; i++) {
+        game.suggest();
+        seen.add(game.statusMessage);
+      }
+      expect(seen.length, greaterThanOrEqualTo(3),
+          reason: 'repeated Suggest should cycle through different words');
+    });
+
+    test('previewMove reports a live score for a valid in-progress move', () {
+      final dict = Dictionary()..loadWords(['CAT']);
+      final game = _game(dict);
+      game.newGame();
+      game.currentPlayer.rack
+        ..clear()
+        ..addAll(const [
+          Tile(letter: 'C', value: 3),
+          Tile(letter: 'A', value: 1),
+          Tile(letter: 'T', value: 1),
+          Tile(letter: 'X', value: 8),
+          Tile(letter: 'Y', value: 4),
+          Tile(letter: 'Z', value: 10),
+          Tile(letter: 'Q', value: 10),
+        ]);
+
+      expect(game.previewMove().valid, isFalse, reason: 'nothing placed yet');
+
+      game.placeTile(0, 7, 6);
+      game.placeTile(1, 7, 7);
+      game.placeTile(2, 7, 8);
+      final preview = game.previewMove();
+      expect(preview.valid, isTrue);
+      expect(preview.score, 10); // (3+1+1) x2 center
+    });
+  });
+
   group('movePending', () {
     test('relocates a pending tile to another empty cell', () {
       final game = _game(Dictionary()..loadWords(['CAT']));
