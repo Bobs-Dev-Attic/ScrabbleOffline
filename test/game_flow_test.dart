@@ -4,6 +4,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scrabble_offline/engine/ai_player.dart';
 import 'package:scrabble_offline/engine/dictionary.dart';
+import 'package:scrabble_offline/models/tile.dart';
 import 'package:scrabble_offline/state/game_state.dart';
 import 'package:scrabble_offline/state/persistence.dart';
 
@@ -41,6 +42,19 @@ void main() {
       );
       expect(game.currentPlayerIndex, 0, reason: 'human goes first');
       expect(game.isComputerTurn, isFalse);
+
+      // Give the computer a word-rich rack so its move is deterministic.
+      game.players[1].rack
+        ..clear()
+        ..addAll(const [
+          Tile(letter: 'C', value: 3),
+          Tile(letter: 'A', value: 1),
+          Tile(letter: 'T', value: 1),
+          Tile(letter: 'E', value: 1),
+          Tile(letter: 'R', value: 1),
+          Tile(letter: 'S', value: 1),
+          Tile(letter: 'N', value: 1),
+        ]);
 
       // Human passes -> control moves to the computer, which should be flagged
       // as thinking and have a turn scheduled.
