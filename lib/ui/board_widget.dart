@@ -68,15 +68,15 @@ class BoardWidget extends StatelessWidget {
     Widget content;
     if (committed != null) {
       final tileWidget = TileWidget(tile: committed, size: size);
-      // Theme-gated pop-in when a tile lands on the board.
-      content = theme.animated
-          ? TweenAnimationBuilder<double>(
-              key: ValueKey('$row,$col,${committed.letter}'),
-              tween: Tween(begin: theme.flashy ? 0.4 : 0.7, end: 1.0),
-              duration: Duration(milliseconds: theme.flashy ? 260 : 160),
-              curve: theme.flashy ? Curves.elasticOut : Curves.easeOutBack,
-              builder: (context, scale, child) =>
-                  Transform.scale(scale: scale, child: child),
+      final cellKey = '$row,$col';
+      final fresh = game.lastPlaced.contains(cellKey);
+      // Tiles from the most recent move drop in, staggered along the word.
+      content = (theme.animated && fresh)
+          ? _DropInTile(
+              key: ValueKey('drop-${game.moveSerial}-$cellKey'),
+              order: game.lastPlacedOrder[cellKey] ?? 0,
+              flashy: theme.flashy,
+              size: size,
               child: tileWidget,
             )
           : tileWidget;
@@ -168,4 +168,43 @@ class RackDragData {
   final int rackIndex;
   final Tile tile;
   const RackDragData(this.rackIndex, this.tile);
+}
+
+/// Animates a freshly placed tile dropping onto the board. [order] staggers
+/// tiles along the word so they land one after another.
+class _DropInTile extends StatelessWidget {
+  final int order;
+  final bool flashy;
+  final double size;
+  final Widget child;
+
+  const _DropInTile({
+    super.key,
+    required this.order,
+    required this.flashy,
+    required this.size,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final start = (order * 0.1).clamp(0.0, 0.6);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 460),
+      curve: Interval(start, 1.0,
+          curve: flashy ? Curves.elasticOut : Curves.easeOutBack),
+      builder: (context, t, child) {
+        final scale = 0.5 + 0.5 * t;
+        return Opacity(
+          opacity: t.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(0, -size * 0.45 * (1 - t)),
+            child: Transform.scale(scale: scale, child: child),
+          ),
+        );
+      },
+      child: child,
+    );
+  }
 }

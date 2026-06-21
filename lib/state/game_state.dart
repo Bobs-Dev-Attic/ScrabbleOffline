@@ -55,6 +55,19 @@ class GameState extends ChangeNotifier {
   /// a previous game is ignored.
   int _aiToken = 0;
 
+  /// Cells placed by the most recent committed move, with their order along the
+  /// word, so the board can animate them dropping in. [moveSerial] changes each
+  /// move so the animation re-fires.
+  Set<String> lastPlaced = {};
+  Map<String, int> lastPlacedOrder = {};
+  int moveSerial = 0;
+
+  /// Bumped each time the player asks for a suggestion; [suggestedIds] holds the
+  /// rack tile ids that spell the suggested word, so the rack can highlight and
+  /// enlarge them as they slide into place.
+  int suggestSerial = 0;
+  Set<int> suggestedIds = {};
+
   GameState({required this.dictionary, required this.persistence}) {
     referee = ScrabbleReferee(dictionary);
     ai = AiPlayer(MoveGenerator(dictionary));
@@ -94,6 +107,9 @@ class GameState extends ChangeNotifier {
     gameOver = false;
     aiThinking = false;
     consecutivePasses = 0;
+    lastPlaced = {};
+    lastPlacedOrder = {};
+    suggestedIds = {};
     _persist();
     notifyListeners();
     _scheduleAiTurnIfNeeded();
@@ -112,6 +128,9 @@ class GameState extends ChangeNotifier {
     gameOver = false;
     aiThinking = false;
     consecutivePasses = 0;
+    lastPlaced = {};
+    lastPlacedOrder = {};
+    suggestedIds = {};
     notifyListeners();
     _scheduleAiTurnIfNeeded();
   }
@@ -171,6 +190,8 @@ class GameState extends ChangeNotifier {
 
     final tile = rack.removeAt(from);
     rack.insert(to, tile);
+    final id = currentPlayer.rackIds.removeAt(from);
+    currentPlayer.rackIds.insert(to, id);
 
     if (pending.isNotEmpty) {
       int remap(int k) {
@@ -191,8 +212,9 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Fills the pending tiles with the best move the generator can find for the
-  /// current (human) player, so they can review it and press Play, or recall.
+  /// Rearranges the current player's rack so the best move's letters come first,
+  /// in word order — a hint that lives entirely on the rack (nothing is placed
+  /// on the board). The UI animates the tiles sliding/enlarging into place.
   bool suggest() {
     if (gameOver || isComputerTurn) return false;
     recallAll();
@@ -205,20 +227,40 @@ class GameState extends ChangeNotifier {
     moves.sort((a, b) => b.score.compareTo(a.score));
     final best = moves.first;
 
-    final usedIndices = <int>{};
+    // Rack indices used by the suggested word, in the order they appear.
+    final usedSet = <int>{};
+    final usedOrder = <int>[];
     for (final p in best.placements) {
-      final idx = _matchRackIndex(p.tile, usedIndices);
+      final idx = _matchRackIndex(p.tile, usedSet);
       if (idx == -1) {
-        recallAll();
         statusMessage = 'Could not build a suggestion.';
         notifyListeners();
         return false;
       }
-      usedIndices.add(idx);
-      pending['${p.row},${p.col}'] = PendingPlacement(p.row, p.col, p.tile, idx);
+      usedSet.add(idx);
+      usedOrder.add(idx);
     }
-    statusMessage =
-        'Suggestion: ${best.mainWord} for ${best.score}. Press Play to confirm.';
+
+    final rest = [
+      for (var i = 0; i < currentPlayer.rack.length; i++)
+        if (!usedSet.contains(i)) i,
+    ];
+    final order = [...usedOrder, ...rest];
+
+    final rack = currentPlayer.rack;
+    final ids = currentPlayer.rackIds;
+    final newRack = [for (final i in order) rack[i]];
+    final newIds = [for (final i in order) ids[i]];
+    rack
+      ..clear()
+      ..addAll(newRack);
+    ids
+      ..clear()
+      ..addAll(newIds);
+
+    suggestedIds = newIds.take(usedOrder.length).toSet();
+    suggestSerial++;
+    statusMessage = 'Try: ${best.mainWord} for ${best.score}';
     notifyListeners();
     return true;
   }
@@ -261,6 +303,14 @@ class GameState extends ChangeNotifier {
     for (final p in placements) {
       board.cellAt(p.row, p.col).tile = p.tile;
     }
+
+    // Record freshly placed cells (ordered) for the board drop-in animation.
+    moveSerial++;
+    lastPlaced = {for (final p in placements) '${p.row},${p.col}'};
+    lastPlacedOrder = {
+      for (var i = 0; i < placements.length; i++)
+        '${placements[i].row},${placements[i].col}': i,
+    };
 
     final usedTiles = placements.map((p) => p.tile).toList();
     currentPlayer.removeFromRack(usedTiles);
@@ -312,7 +362,8 @@ class GameState extends ChangeNotifier {
     final sorted = [...rackIndices]..sort((a, b) => b.compareTo(a));
     for (final idx in sorted) {
       if (idx >= 0 && idx < currentPlayer.rack.length) {
-        returned.add(currentPlayer.rack.removeAt(idx));
+        returned.add(currentPlayer.rack[idx]);
+        currentPlayer.removeRackAt(idx);
       }
     }
     currentPlayer.refill(bag.draw);

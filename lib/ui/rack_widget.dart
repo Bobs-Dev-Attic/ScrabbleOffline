@@ -1,15 +1,17 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
-import '../models/player.dart';
 import '../models/tile.dart';
 import '../state/game_state.dart';
 import 'board_widget.dart';
 import 'game_theme.dart';
 import 'tile_widget.dart';
 
-/// The current player's rack. Tiles can be dragged onto the board, dragged onto
-/// each other to reorder, or tapped to select for exchange. All seven tiles are
-/// sized to fit on a single row.
+/// The current player's rack, rendered as animated, repositionable tiles.
+/// Tiles can be dragged onto the board, dragged onto each other to reorder, or
+/// tapped to select for exchange. Reordering (incl. from Suggest) slides tiles
+/// to their new spots, and suggested tiles briefly enlarge.
 class RackWidget extends StatelessWidget {
   final GameState game;
   final void Function(int rackIndex) onExchangeToggle;
@@ -43,27 +45,60 @@ class RackWidget extends StatelessWidget {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Divide the row into 7 equal slots so all tiles always fit, with a
-          // little spacing taken from each slot. Sizing for the full rack keeps
-          // tiles a stable size as they are placed.
-          final slot = constraints.maxWidth / kRackCapacity;
-          final spacing = (slot * 0.12).clamp(2.0, 6.0);
-          final size = (slot - spacing).clamp(20.0, 60.0);
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var i = 0; i < tiles.length; i++) ...[
-                if (i > 0) SizedBox(width: spacing),
-                _slot(tiles[i].key, tiles[i].value, size),
+          final maxW = constraints.maxWidth;
+          final slot = maxW / 7;
+          final gap = (slot * 0.14).clamp(3.0, 7.0);
+          final size = (slot - gap).clamp(20.0, 52.0);
+          final n = tiles.length;
+          final groupW = n * size + (n - 1) * gap;
+          final startX = max(0.0, (maxW - groupW) / 2);
+
+          return SizedBox(
+            height: size,
+            width: maxW,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                for (var i = 0; i < n; i++)
+                  _positioned(theme, tiles[i], i, startX, size, gap),
               ],
-            ],
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _slot(int rackIndex, Tile tile, double size) {
+  Widget _positioned(
+    GameTheme theme,
+    MapEntry<int, Tile> entry,
+    int displayIndex,
+    double startX,
+    double size,
+    double gap,
+  ) {
+    final rackIndex = entry.key;
+    final id = game.currentPlayer.rackIds[rackIndex];
+    final left = startX + displayIndex * (size + gap);
+
+    return AnimatedPositioned(
+      key: ValueKey('racktile-$id'),
+      duration: theme.animated
+          ? const Duration(milliseconds: 300)
+          : Duration.zero,
+      curve: Curves.easeOutCubic,
+      left: left,
+      top: 0,
+      width: size,
+      height: size,
+      child: _slot(theme, rackIndex, id, entry.value, size),
+    );
+  }
+
+  Widget _slot(
+      GameTheme theme, int rackIndex, int id, Tile tile, double size) {
+    final suggested = game.suggestedIds.contains(id);
+
     if (exchangeMode) {
       final selected = selectedForExchange.contains(rackIndex);
       return GestureDetector(
@@ -75,6 +110,23 @@ class RackWidget extends StatelessWidget {
       );
     }
 
+    Widget tileWidget =
+        TileWidget(tile: tile, size: size, highlighted: suggested);
+
+    // Suggested tiles enlarge briefly (then settle) as they slide into place.
+    if (theme.animated && suggested) {
+      tileWidget = TweenAnimationBuilder<double>(
+        key: ValueKey('pulse-$id-${game.suggestSerial}'),
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 520),
+        builder: (context, t, child) {
+          final scale = 1 + 0.3 * sin(t * pi); // up then back to 1
+          return Transform.scale(scale: scale, child: child);
+        },
+        child: tileWidget,
+      );
+    }
+
     final data = RackDragData(rackIndex, tile);
     return DragTarget<RackDragData>(
       onWillAcceptWithDetails: (d) => d.data.rackIndex != rackIndex,
@@ -83,27 +135,62 @@ class RackWidget extends StatelessWidget {
         final hovering = candidate.isNotEmpty;
         return Draggable<RackDragData>(
           data: data,
-          feedback: Material(
-            color: Colors.transparent,
-            child: TileWidget(tile: tile, size: size * 1.1, highlighted: true),
-          ),
+          feedback: _DragFeedback(tile: tile, size: size, theme: theme),
           childWhenDragging: Opacity(
-            opacity: 0.3,
+            opacity: 0.25,
             child: TileWidget(tile: tile, size: size),
           ),
-          child: AnimatedContainer(
+          child: AnimatedScale(
+            scale: hovering ? 1.08 : 1.0,
             duration: const Duration(milliseconds: 120),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(size * 0.14),
-              border: Border.all(
-                color: hovering ? Colors.amberAccent : Colors.transparent,
-                width: 2,
-              ),
-            ),
-            child: TileWidget(tile: tile, size: size),
+            child: tileWidget,
           ),
         );
       },
+    );
+  }
+}
+
+/// The widget shown under the finger while dragging: it pops up larger with a
+/// stronger shadow, so picking up a tile feels tactile.
+class _DragFeedback extends StatelessWidget {
+  final Tile tile;
+  final double size;
+  final GameTheme theme;
+
+  const _DragFeedback(
+      {required this.tile, required this.size, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 1.0, end: 1.22),
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        builder: (context, scale, child) {
+          return Transform.scale(
+            scale: scale,
+            child: Transform.rotate(angle: -0.04, child: child),
+          );
+        },
+        child: GameThemeScope(
+          theme: theme,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(size * 0.14),
+              boxShadow: const [
+                BoxShadow(
+                    color: Color(0x77000000),
+                    blurRadius: 10,
+                    offset: Offset(0, 6)),
+              ],
+            ),
+            child: TileWidget(tile: tile, size: size, highlighted: true),
+          ),
+        ),
+      ),
     );
   }
 }

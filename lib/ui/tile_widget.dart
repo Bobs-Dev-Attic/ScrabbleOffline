@@ -4,6 +4,7 @@ import '../models/tile.dart';
 import 'game_theme.dart';
 
 /// Visual representation of a single Scrabble tile, colored by the active theme.
+/// In rich themes it gets a subtle bevel + gloss to look three-dimensional.
 class TileWidget extends StatelessWidget {
   final Tile tile;
   final double size;
@@ -19,36 +20,66 @@ class TileWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = GameThemeScope.of(context);
+    final rich = theme.richDecoration;
     final display = tile.isUnassignedBlank ? '' : tile.letter;
+    final radius = size * 0.14;
+
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: theme.richDecoration
+        gradient: rich
             ? LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: theme.tileGradient,
+                colors: [
+                  _lighten(theme.tileGradient.first, 0.10),
+                  theme.tileGradient.first,
+                  theme.tileGradient.last,
+                ],
+                stops: const [0.0, 0.45, 1.0],
               )
             : null,
-        color: theme.richDecoration ? null : theme.tileGradient.first,
-        borderRadius: BorderRadius.circular(size * 0.12),
+        color: rich ? null : theme.tileGradient.first,
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(
           color: highlighted ? theme.accent : theme.tileBorder,
           width: highlighted ? 2 : 1,
         ),
-        boxShadow: theme.richDecoration
-            ? const [
+        boxShadow: rich
+            ? [
                 BoxShadow(
-                  color: Color(0x55000000),
-                  blurRadius: 2,
-                  offset: Offset(1, 1),
+                  color: const Color(0x66000000),
+                  blurRadius: size * 0.10,
+                  offset: Offset(size * 0.04, size * 0.06),
                 ),
               ]
             : null,
       ),
       child: Stack(
         children: [
+          // Glossy highlight across the top to read as a raised, 3D surface.
+          if (rich)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              height: size * 0.5,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(radius)),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.35),
+                      Colors.white.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           Center(
             child: Text(
               display,
@@ -75,5 +106,12 @@ class TileWidget extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Color _lighten(Color c, double amount) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl
+        .withLightness((hsl.lightness + amount).clamp(0.0, 1.0))
+        .toColor();
   }
 }
