@@ -48,6 +48,12 @@ class SettingsController extends ChangeNotifier {
   /// or "custom:<paletteId>".
   String activeKey = AppThemeId.classic.name;
   bool permissiveDictionary = false;
+
+  /// When on, a valid human play is compared to the best possible move:
+  /// a perfect play celebrates with confetti, a sub-optimal one briefly shows
+  /// the best placement. Default on.
+  bool bestMoveFeedback = true;
+
   List<CustomPalette> customPalettes = [];
 
   bool get isCustomActive => activeKey.startsWith('custom:');
@@ -77,6 +83,8 @@ class SettingsController extends ChangeNotifier {
     activeKey =
         _box!.get('theme', defaultValue: AppThemeId.classic.name) as String;
     permissiveDictionary = _box!.get('permissive', defaultValue: false) as bool;
+    bestMoveFeedback =
+        _box!.get('best_move_feedback', defaultValue: true) as bool;
     final raw = _box!.get('custom_palettes', defaultValue: const <dynamic>[])
         as List;
     customPalettes = raw
@@ -141,12 +149,20 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setBestMoveFeedback(bool value) {
+    if (value == bestMoveFeedback) return;
+    bestMoveFeedback = value;
+    _box?.put('best_move_feedback', value);
+    notifyListeners();
+  }
+
   /// Wipes stored preferences and returns to defaults. Used by the Settings
   /// "Reset local data" action (alongside clearing the saved game).
   Future<void> resetToDefaults() async {
     await _box?.clear();
     activeKey = AppThemeId.classic.name;
     permissiveDictionary = false;
+    bestMoveFeedback = true;
     customPalettes = [];
     notifyListeners();
   }

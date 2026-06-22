@@ -225,6 +225,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _permissiveTile(),
               _updateDictionaryTile(online),
               const SizedBox(height: 20),
+              const _SectionTitle('Gameplay'),
+              _bestMoveTile(),
+              const SizedBox(height: 20),
               const _SectionTitle('App'),
               _updatesTile(online),
               _forceUpdateTile(),
@@ -663,6 +666,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Local data cleared.')),
+    );
+  }
+
+  Widget _bestMoveTile() {
+    return Card(
+      color: const Color(0x22FFFFFF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: SwitchListTile(
+        value: settings.bestMoveFeedback,
+        onChanged: settings.setBestMoveFeedback,
+        activeThumbColor: Colors.amberAccent,
+        secondary: const Icon(Icons.auto_awesome, color: Colors.white70),
+        title: const Text('Best-move celebration',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        subtitle: const Text(
+          'Confetti when you play the highest-scoring move (no Suggest used). '
+          'Otherwise, briefly shows the best play and its points before the '
+          'next turn.',
+          style: TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+      ),
     );
   }
 

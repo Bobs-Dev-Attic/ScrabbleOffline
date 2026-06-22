@@ -113,10 +113,40 @@ class GameState extends ChangeNotifier {
   Tile? ghostAt(int row, int col) => ghosts['$row,$col'];
 
   /// True once the suggestion ghosts begin fading: the board animates their
-  /// opacity to 0 over [kGhostFadeMs] before they are cleared.
+  /// opacity to 0 over [ghostFadeMs] before they are cleared.
   bool ghostsFading = false;
   Timer? _ghostFadeTimer;
   Timer? _ghostFadeStartTimer;
+
+  /// Active ghost fade duration (ms). Suggest uses the long [kGhostFadeMs];
+  /// the post-play "best move" review uses a shorter fade.
+  int ghostFadeMs = kGhostFadeMs;
+
+  // --- Best-move feedback (celebration / potential review) -------------------
+
+  /// When true (mirrors the Settings toggle), a valid human play is compared to
+  /// the best possible move: a perfect play triggers a celebration, a
+  /// sub-optimal one briefly shows the best placement as ghosts.
+  bool bestMoveFeedbackEnabled = true;
+
+  /// Whether the player used Suggest during the current turn (suppresses the
+  /// "perfect play" celebration — they had help).
+  bool _usedSuggestThisTurn = false;
+
+  /// Bumped to fire a celebration (confetti + tile sparkles) in the UI.
+  int celebrateSerial = 0;
+
+  /// The [moveSerial] that is being celebrated, so the board sparkles only the
+  /// tiles from that move.
+  int celebratedMoveSerial = -1;
+
+  /// True while the board is showing the best-possible placement as ghosts
+  /// after a sub-optimal play; the next turn is deferred until the fade ends.
+  bool reviewingPotential = false;
+
+  /// The best achievable score, shown during a potential review.
+  int reviewPotential = 0;
+  Timer? _reviewTimer;
 
   /// Set once the controller is disposed, so pending timers / scheduled AI
   /// turns don't call notifyListeners() on a dead notifier.
@@ -127,6 +157,7 @@ class GameState extends ChangeNotifier {
     _disposed = true;
     _ghostFadeTimer?.cancel();
     _ghostFadeStartTimer?.cancel();
+    _reviewTimer?.cancel();
     super.dispose();
   }
 
@@ -143,13 +174,23 @@ class GameState extends ChangeNotifier {
     ghostsFading = false;
   }
 
+  /// Resets best-move feedback state (used when starting/restoring a game).
+  void _resetFeedbackState() {
+    _reviewTimer?.cancel();
+    _reviewTimer = null;
+    reviewingPotential = false;
+    reviewPotential = 0;
+    _usedSuggestThisTurn = false;
+    ghostFadeMs = kGhostFadeMs;
+  }
+
   /// Begins fading the suggestion ghosts now: animates them out over
-  /// [kGhostFadeMs], then clears them. Safe to call repeatedly.
+  /// [ghostFadeMs], then clears them. Safe to call repeatedly.
   void _beginGhostFade() {
     if (ghosts.isEmpty || ghostsFading) return;
     ghostsFading = true;
     _ghostFadeTimer?.cancel();
-    _ghostFadeTimer = Timer(const Duration(milliseconds: kGhostFadeMs), () {
+    _ghostFadeTimer = Timer(Duration(milliseconds: ghostFadeMs), () {
       if (_disposed) return;
       ghosts = {};
       ghostsFading = false;
@@ -163,6 +204,7 @@ class GameState extends ChangeNotifier {
   /// value), then fade out on their own — even if the player never places a
   /// tile. The caller is expected to notifyListeners() after setting ghosts.
   void _scheduleGhostFade() {
+    ghostFadeMs = kGhostFadeMs; // Suggest uses the long fade.
     _ghostFadeStartTimer?.cancel();
     _ghostFadeStartTimer = Timer(const Duration(milliseconds: 500), () {
       if (_disposed) return;
@@ -233,6 +275,7 @@ class GameState extends ChangeNotifier {
     _suggestionCycle = [];
     _suggestionSignature = '';
     _suggestionIndex = 0;
+    _resetFeedbackState();
     _persist();
     notifyListeners();
     _scheduleAiTurnIfNeeded();
@@ -260,6 +303,7 @@ class GameState extends ChangeNotifier {
     _suggestionCycle = [];
     _suggestionSignature = '';
     _suggestionIndex = 0;
+    _resetFeedbackState();
     notifyListeners();
     _scheduleAiTurnIfNeeded();
   }
@@ -287,7 +331,7 @@ class GameState extends ChangeNotifier {
   /// Tentatively places the rack tile at [rackIndex] onto an empty cell.
   /// Blanks must already be assigned a letter via [tile].
   bool placeTile(int rackIndex, int row, int col, {Tile? tile}) {
-    if (gameOver) return false;
+    if (gameOver || reviewingPotential) return false;
     if (isOccupied(row, col)) return false;
     if (rackIndex < 0 || rackIndex >= currentPlayer.rack.length) return false;
     final placed = tile ?? currentPlayer.rack[rackIndex];
@@ -389,7 +433,8 @@ class GameState extends ChangeNotifier {
   /// in word order — a hint that lives entirely on the rack (nothing is placed
   /// on the board). The UI animates the tiles sliding/enlarging into place.
   bool suggest() {
-    if (gameOver || isComputerTurn) return false;
+    if (gameOver || isComputerTurn || reviewingPotential) return false;
+    _usedSuggestThisTurn = true; // suppresses the "perfect play" celebration
     recallAll();
 
     final sig = _suggestionSignatureValue();
@@ -509,6 +554,7 @@ class GameState extends ChangeNotifier {
   MoveResult commitTurn() {
     if (gameOver) return MoveResult.invalid('Game over.');
     if (isComputerTurn) return MoveResult.invalid('It is the computer\'s turn.');
+    if (reviewingPotential) return MoveResult.invalid('Hold on…');
     final placements = pending.values
         .map((p) => Placement(p.row, p.col, p.tile))
         .toList();
@@ -519,14 +565,42 @@ class GameState extends ChangeNotifier {
       notifyListeners();
       return result;
     }
-    _applyValidatedMove(placements, result);
+
+    // Compute the best possible move BEFORE applying (the rack still holds all
+    // tiles and the board is unchanged) so we can give best-move feedback.
+    GeneratedMove? best;
+    if (bestMoveFeedbackEnabled) {
+      final moves = ai.generator.generate(board, currentPlayer.rack);
+      if (moves.isNotEmpty) {
+        best = moves.reduce((a, b) => b.score > a.score ? b : a);
+      }
+    }
+    final usedSuggest = _usedSuggestThisTurn;
+
+    // Apply the move but defer advancing the turn when we may show a review.
+    _applyValidatedMove(placements, result, complete: false);
+
+    if (best != null && result.score >= best.score) {
+      // Perfect play! Celebrate (unless they used Suggest), then continue.
+      if (!usedSuggest) {
+        celebrateSerial++;
+        celebratedMoveSerial = moveSerial;
+      }
+      _completeTurn();
+    } else if (best != null && result.score < best.score) {
+      // Sub-optimal: show what the best play would have been, then continue.
+      _startPotentialReview(best);
+    } else {
+      _completeTurn();
+    }
     return result;
   }
 
   /// Commits a validated set of placements for the current player: writes tiles
-  /// to the board, updates score and rack, advances the turn, persists, and
-  /// schedules the computer's reply if needed. Shared by humans and the AI.
-  void _applyValidatedMove(List<Placement> placements, MoveResult result) {
+  /// to the board, updates score and rack, and (when [complete]) advances the
+  /// turn. Shared by humans and the AI.
+  void _applyValidatedMove(List<Placement> placements, MoveResult result,
+      {bool complete = true}) {
     for (final p in placements) {
       board.cellAt(p.row, p.col).tile = p.tile;
     }
@@ -560,11 +634,56 @@ class GameState extends ChangeNotifier {
     consecutivePasses = 0;
 
     _checkGameOver();
-    if (!gameOver) _advanceTurn();
+    if (complete) {
+      _completeTurn();
+    } else {
+      notifyListeners();
+    }
+  }
 
+  /// Advances to the next player, persists, and schedules the AI reply. Called
+  /// either immediately after a move or after a deferred best-move review.
+  void _completeTurn() {
+    if (!gameOver) _advanceTurn();
     _persist();
     notifyListeners();
     _scheduleAiTurnIfNeeded();
+  }
+
+  /// After a sub-optimal play, shows the best placement as ghost tiles with a
+  /// highlighted "potential" status, fades them over a few seconds, then hands
+  /// off to the next player.
+  void _startPotentialReview(GeneratedMove best) {
+    if (gameOver) {
+      _completeTurn();
+      return;
+    }
+    reviewingPotential = true;
+    reviewPotential = best.score;
+    _cancelGhostFade();
+    ghostFadeMs = 2500;
+    ghosts = {
+      for (final p in best.placements) '${p.row},${p.col}': p.tile,
+    };
+    ghostsFading = false;
+    notifyListeners();
+
+    // Hold one frame at full opacity, then fade, then continue the game.
+    _reviewTimer?.cancel();
+    _reviewTimer = Timer(const Duration(milliseconds: 400), () {
+      if (_disposed) return;
+      ghostsFading = true;
+      notifyListeners();
+      _reviewTimer = Timer(Duration(milliseconds: ghostFadeMs + 200), () {
+        if (_disposed) return;
+        ghosts = {};
+        ghostsFading = false;
+        reviewingPotential = false;
+        reviewPotential = 0;
+        ghostFadeMs = kGhostFadeMs;
+        _completeTurn();
+      });
+    });
   }
 
   /// Passes the turn without placing tiles.
@@ -662,6 +781,7 @@ class GameState extends ChangeNotifier {
 
   void _advanceTurn() {
     currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+    _usedSuggestThisTurn = false; // fresh turn, no help used yet
   }
 
   void _checkGameOver() {

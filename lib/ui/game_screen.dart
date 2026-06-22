@@ -15,6 +15,7 @@ import '../state/game_state.dart';
 import '../state/settings.dart';
 import 'animated_background.dart';
 import 'board_widget.dart';
+import 'confetti_overlay.dart';
 import 'game_theme.dart';
 import 'rack_widget.dart';
 import 'settings_screen.dart';
@@ -95,19 +96,31 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ],
       ),
-      body: AnimatedBackground(
-        theme: theme,
-        child: AnimatedBuilder(
-          animation: game,
-          builder: (context, _) {
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                final wide = constraints.maxWidth > 900;
-                return wide ? _wideLayout() : _narrowLayout();
-              },
-            );
-          },
-        ),
+      body: AnimatedBuilder(
+        animation: game,
+        builder: (context, _) {
+          // Keep the engine's celebration toggle in sync with the setting.
+          game.bestMoveFeedbackEnabled = widget.settings.bestMoveFeedback;
+          return Stack(
+            children: [
+              AnimatedBackground(
+                theme: theme,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final wide = constraints.maxWidth > 900;
+                    return wide ? _wideLayout() : _narrowLayout();
+                  },
+                ),
+              ),
+              // Confetti celebration overlay (fires on a perfect play).
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ConfettiOverlay(trigger: game.celebrateSerial),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -394,6 +407,14 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _statusBar() {
+    // After a sub-optimal play, highlight the best score that was possible.
+    if (game.reviewingPotential) {
+      return _statusBox(
+        '✨ Best play here was ${game.reviewPotential} points',
+        const Color(0xE6B5965A),
+        bold: true,
+      );
+    }
     // While the player is placing tiles, show the live potential score.
     if (game.pending.isNotEmpty && !game.isComputerTurn) {
       final preview = game.previewMove();
@@ -465,6 +486,18 @@ class _GameScreenState extends State<GameScreen> {
             '${game.currentPlayer.name} is thinking…',
             style: const TextStyle(color: Colors.white, fontSize: 15),
           ),
+        ],
+      );
+    }
+
+    if (game.reviewingPotential) {
+      return const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.lightbulb_outline, color: Colors.amberAccent, size: 18),
+          SizedBox(width: 10),
+          Text('Showing the best possible play…',
+              style: TextStyle(color: Colors.white, fontSize: 15)),
         ],
       );
     }
@@ -597,6 +630,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _play() {
+    game.bestMoveFeedbackEnabled = widget.settings.bestMoveFeedback;
     final result = game.commitTurn();
     if (result.valid) {
       ScaffoldMessenger.of(context).showSnackBar(

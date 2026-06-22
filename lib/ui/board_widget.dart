@@ -101,7 +101,7 @@ class BoardWidget extends StatelessWidget {
       final cellKey = '$row,$col';
       final fresh = game.lastPlaced.contains(cellKey);
       // Tiles from the most recent move drop in, staggered along the word.
-      content = (theme.animated && fresh)
+      Widget tile = (theme.animated && fresh)
           ? _DropInTile(
               key: ValueKey('drop-${game.moveSerial}-$cellKey'),
               order: game.lastPlacedOrder[cellKey] ?? 0,
@@ -110,6 +110,25 @@ class BoardWidget extends StatelessWidget {
               child: tileWidget,
             )
           : tileWidget;
+      // A perfect play sparkles its tiles one by one (celebration).
+      if (theme.animated &&
+          fresh &&
+          game.celebratedMoveSerial == game.moveSerial) {
+        tile = Stack(
+          clipBehavior: Clip.none,
+          children: [
+            tile,
+            Positioned.fill(
+              child: _TileSparkle(
+                key: ValueKey('spark-${game.celebrateSerial}-$cellKey'),
+                order: game.lastPlacedOrder[cellKey] ?? 0,
+                size: size,
+              ),
+            ),
+          ],
+        );
+      }
+      content = tile;
     } else if (pending != null) {
       // Pending tiles can be dragged to another cell to adjust placement, or
       // tapped to recall them to the rack. They shake when a move is rejected.
@@ -140,8 +159,7 @@ class BoardWidget extends StatelessWidget {
           ? AnimatedOpacity(
               opacity: game.ghostsFading ? 0.0 : 0.45,
               duration: Duration(
-                  milliseconds:
-                      game.ghostsFading ? GameState.kGhostFadeMs : 0),
+                  milliseconds: game.ghostsFading ? game.ghostFadeMs : 0),
               curve: Curves.easeInOut,
               child: TileWidget(tile: ghost, size: size, highlighted: true),
             )
@@ -151,7 +169,9 @@ class BoardWidget extends StatelessWidget {
     return DragTarget<Object>(
       onWillAcceptWithDetails: (details) {
         if (committed != null || pending != null) return false;
-        if (game.gameOver || game.isComputerTurn) return false;
+        if (game.gameOver || game.isComputerTurn || game.reviewingPotential) {
+          return false;
+        }
         final d = details.data;
         return d is RackDragData || d is BoardDragData;
       },
@@ -293,6 +313,67 @@ class _DropInTile extends StatelessWidget {
         );
       },
       child: child,
+    );
+  }
+}
+
+/// A one-shot sparkle that bursts over a freshly placed tile during a
+/// celebration, staggered by [order] so the word's tiles light up one by one.
+class _TileSparkle extends StatefulWidget {
+  final int order;
+  final double size;
+  const _TileSparkle({super.key, required this.order, required this.size});
+
+  @override
+  State<_TileSparkle> createState() => _TileSparkleState();
+}
+
+class _TileSparkleState extends State<_TileSparkle>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 850),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(Duration(milliseconds: 150 + widget.order * 170), () {
+      if (mounted) _c.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) {
+          final t = _c.value;
+          if (t == 0) return const SizedBox.shrink();
+          final scale = 0.4 + 0.9 * Curves.easeOut.transform(t);
+          final opacity = (t < 0.5 ? t * 2 : (1 - (t - 0.5) * 2)).clamp(0.0, 1.0);
+          return Center(
+            child: Opacity(
+              opacity: opacity,
+              child: Transform.scale(
+                scale: scale,
+                child: Transform.rotate(
+                  angle: t * pi,
+                  child: Icon(Icons.auto_awesome,
+                      size: widget.size * 0.85, color: Colors.amberAccent),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

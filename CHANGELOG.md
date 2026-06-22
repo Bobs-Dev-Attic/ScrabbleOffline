@@ -17,6 +17,19 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.19.0] - 2026-06-22
+
+### Added
+- **Best-move celebration & coaching** (Settings → Gameplay, on by default).
+  When you press Play on a valid move:
+  - If it scores the **maximum possible** points (and you didn't use Suggest),
+    **confetti** rains down for ~3.5s and the placed tiles **sparkle one by
+    one**.
+  - Otherwise, the board briefly shows the **best possible placement** as ghost
+    tiles with its **potential points** highlighted in the status bar, then
+    fades over ~2.5s before the next player/computer plays.
+  Can be turned off in Settings.
+
 ## [1.18.0] - 2026-06-22
 
 ### Added
