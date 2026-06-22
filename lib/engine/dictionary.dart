@@ -1,3 +1,10 @@
+// lib/engine/dictionary.dart —
+//
+// Offline word validation. Compiles the bundled Scrabble word list into the Trie
+// and, in permissive mode, also consults an expanded supplement.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'package:flutter/services.dart' show rootBundle;
 
 import 'trie.dart';

@@ -1,3 +1,10 @@
+// lib/models/board.dart —
+//
+// The 15x15 board model: premium-cell layout (DL/TL/DW/TW/center) and the grid of
+// committed tiles.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'tile.dart';
 
 /// Bonus multiplier classification for a single board cell.

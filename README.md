@@ -46,13 +46,27 @@ State management uses `ChangeNotifier` + `AnimatedBuilder`. Persistence writes
 three keys (`board_matrix`, `player_pool`, `bag_state`) to the
 `scrabble_game_state` Hive box after each committed turn.
 
+## Documentation
+
+- **[`docs/DESIGN.md`](docs/DESIGN.md)** — full design documentation:
+  architecture layers, data models, algorithms, persistence, theming, and the
+  offline/PWA strategy.
+- **[`CHANGELOG.md`](CHANGELOG.md)** — release notes / running list of updates.
+- **[`CLAUDE.md`](CLAUDE.md)** — the product spec and architectural boundaries.
+
+The displayed app version lives in `lib/app_info.dart` (`kAppVersion`) and
+`pubspec.yaml`; bump both and add a `CHANGELOG.md` entry per release.
+
 ## Run locally
 
 ```bash
 flutter pub get
 flutter run -d chrome        # development
 flutter test                 # run the engine unit tests
-flutter build web --release  # production static bundle -> build/web
+
+# production static bundle -> build/web
+flutter build web --release --no-web-resources-cdn --no-tree-shake-icons
+python3 tool/build_sw.py     # generate the offline caching service worker
 ```
 
 ## Deploy to Vercel

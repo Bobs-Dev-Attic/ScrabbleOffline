@@ -1,3 +1,10 @@
+// lib/main.dart —
+//
+// Application entry point. Bootstraps Hive, the dictionary, and settings, then
+// renders the home screen and the new-game (opponents/difficulty) flow.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';

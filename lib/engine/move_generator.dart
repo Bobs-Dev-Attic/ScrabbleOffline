@@ -1,3 +1,10 @@
+// lib/engine/move_generator.dart —
+//
+// Anchor-based legal-move generator across both axes. Powers both the AI opponent
+// and the human Suggest feature; every candidate is fully validated and scored.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import '../models/board.dart';
 import '../models/tile.dart';
 import 'dictionary.dart';

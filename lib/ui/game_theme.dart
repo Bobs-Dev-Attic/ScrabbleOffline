@@ -1,3 +1,10 @@
+// lib/ui/game_theme.dart —
+//
+// Board theme palettes and behavior flags, plus an InheritedWidget scope so widgets
+// rebuild reactively when the theme changes.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'package:flutter/material.dart';
 
 /// Identifiers for the selectable board themes / modes.

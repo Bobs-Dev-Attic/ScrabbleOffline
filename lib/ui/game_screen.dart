@@ -1,3 +1,10 @@
+// lib/ui/game_screen.dart —
+//
+// The in-game screen: scoreboard, board, rack, action controls, and the scrolling
+// play-history strip.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'package:flutter/material.dart';
 
 import '../models/tile.dart';

@@ -1,3 +1,10 @@
+// lib/state/game_state.dart —
+//
+// Central game controller (ChangeNotifier). Owns turn flow, tile placement, scoring,
+// the AI turn, Suggest/ghosts, the play-history log, and local persistence.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';

@@ -1,3 +1,9 @@
+// lib/ui/animated_background.dart —
+//
+// A slowly-drifting gradient backdrop (rendered static for the battery-saver theme).
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'dart:math';
 
 import 'package:flutter/material.dart';

@@ -1,3 +1,9 @@
+// lib/ui/rack_widget.dart —
+//
+// The current player's rack: draggable, reorderable, animated tiles.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'dart:math';
 
 import 'package:flutter/material.dart';

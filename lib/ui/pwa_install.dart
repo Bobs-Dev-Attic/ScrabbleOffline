@@ -1,3 +1,10 @@
+// lib/ui/pwa_install.dart —
+//
+// Guarded dart:js_interop bindings to the PWA install/offline/update helpers defined
+// in web/index.html.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'dart:js_interop';
 
 /// Thin bindings to the PWA install helpers defined in web/index.html.
