@@ -62,8 +62,16 @@ self.addEventListener('install', (event) => {
   // (On a first install there is no active worker, so it activates immediately.)
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    // Cache individually so one failure doesn't abort the whole install.
-    await Promise.allSettled(RESOURCES.map((url) => cache.add(url)));
+    // Fetch with {cache:'reload'} to bypass the HTTP cache, so each new
+    // version pulls fresh assets (and recovers any stale-cached files).
+    await Promise.allSettled(RESOURCES.map(async (url) => {
+      try {
+        const resp = await fetch(url, { cache: 'reload' });
+        if (resp && (resp.ok || resp.type === 'opaque')) {
+          await cache.put(url, resp);
+        }
+      } catch (e) {}
+    }));
   })());
 });
 

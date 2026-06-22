@@ -18,7 +18,10 @@ flutter config --enable-web --no-analytics
 flutter pub get
 # --no-web-resources-cdn bundles CanvasKit locally so the app loads with zero
 # external CDN dependencies (truly offline, per the project requirements).
-flutter build web --release --no-web-resources-cdn
+# --no-tree-shake-icons ships the full Material Icons font with stable
+# codepoints, so a cached older icon font can't mismatch newer code (which
+# otherwise makes icons render blank after an update).
+flutter build web --release --no-web-resources-cdn --no-tree-shake-icons
 
 # Replace Flutter's no-op service worker with a caching one so the installed
 # PWA launches fully offline (e.g. airplane mode).
