@@ -1,0 +1,145 @@
+# Changelog
+
+All notable changes to **Scrabble Offline** are recorded here. The format is
+loosely based on [Keep a Changelog](https://keepachangelog.com/), and the
+project aims to follow [Semantic Versioning](https://semver.org/).
+
+The version shown in the app (home screen, bottom-right; and Settings → App)
+is defined in `lib/app_info.dart` (`kAppVersion`) and mirrored in
+`pubspec.yaml`.
+
+This list was reconstructed from the project's git history; versions group
+related commits into coherent, user-facing milestones.
+
+---
+
+## [1.7.1] - 2026-06-22
+
+### Added
+- **Project documentation.** A `docs/DESIGN.md` design document (architecture,
+  data models, algorithms, persistence, PWA strategy) and this `CHANGELOG.md`
+  release-notes log.
+- File-level header comments across `lib/` source files describing each file's
+  role and pointing to the design doc.
+
+### Fixed
+- **Suggest ghost tiles now always fade out.** Previously the fade only began
+  when the player placed a tile, so following a suggestion (placing on the
+  ghost cells) replaced each ghost instantly and no fade was ever seen. Ghosts
+  now hold briefly, then slowly fade over ~8.5s and clear on their own — within
+  8–9s of appearing — regardless of placement.
+
+### Changed
+- Re-baselined the version number to reflect the full feature history
+  (was reporting `1.1.0`).
+
+## [1.7.0] - 2026-06-22
+
+### Added
+- **Play-history strip.** A horizontal, auto-scrolling strip along the bottom
+  of the game screen logs each move (word + points, with bingos highlighted, as
+  well as pass/swap entries) and keeps the newest move in view.
+- **Slower ghost fade.** The Suggest ghost tiles fade out over ~8.5s.
+
+## [1.6.0] - 2026-06-22
+
+### Added
+- **High-contrast board theme** (black board, white grid, vivid premiums, white
+  tiles with black text) for accessibility.
+- **App version display** (`lib/app_info.dart`), shown small in the home
+  screen's bottom-right corner and in Settings → App.
+- **Check for updates** in Settings (enabled only when online); reports
+  up-to-date / update-available and offers "Update now".
+- **Update word list** in Settings (online only): re-downloads the dictionary
+  fresh and rebuilds the in-memory trie/supplement, reporting the new count.
+- Computer opponents are labeled **CMP1 / CMP2 / CMP3** on the game screen.
+
+### Fixed
+- **Disappearing icons after updates.** Tree-shaking reassigned Material icon
+  codepoints each build while assets were cached immutably, so a stale icon
+  font mismatched newer code. Now the full icon font is shipped
+  (`--no-tree-shake-icons`), the immutable asset header was removed, and the
+  service worker precaches with `cache: 'reload'`.
+- Suggest ghost tiles begin fading once the player starts placing.
+
+## [1.5.0] - 2026-06-21
+
+### Added
+- **Progressive Web App.** Installable to the home screen with a custom
+  Scrabble-tile icon carrying a "no Wi-Fi" badge to assert the offline build;
+  polished install metadata (theme color, Apple meta tags, manifest).
+- **"Install app" button** on the home screen (hidden when already installed),
+  firing the native install prompt or showing manual steps on iOS.
+- **Offline-ready & update indicators** on the home screen, plus on-demand
+  update application.
+
+### Fixed
+- **Offline (airplane-mode) launch.** Flutter's generated service worker is a
+  no-op that caches nothing, so a freshly installed PWA hung on the splash with
+  no network. A real caching service worker (`tool/build_sw.py`) now precaches
+  the app shell, CanvasKit, fonts, and dictionaries, with a navigation
+  fallback; Flutter's own registration is disabled so it can't clobber ours.
+
+## [1.4.0] - 2026-06-21
+
+### Added
+- **Animations & polish:** computer tiles drop in (staggered), tiles gain a 3D
+  gradient/gloss in rich themes, a slowly-drifting background, and a drag
+  pickup animation.
+- **On-board tile moves:** drag a pending (uncommitted) tile to adjust its
+  placement before playing.
+- **Multiple computer opponents** (1–3) in a single game.
+- **Live potential score** while placing tiles.
+- **Cycling suggestions with on-board ghost tiles:** repeated Suggest presses
+  cycle through different words/spots, each shown as translucent ghost tiles on
+  the board.
+- A board menu (three-dot) with New Game and Settings.
+
+### Changed
+- Tighter vertical spacing so content fits, especially with a two-line status.
+- Action button order: Pass, Swap, Recall, Suggest, Play.
+- Translucent scoring/status/control panels so the background shows through.
+
+## [1.3.0] - 2026-06-21
+
+### Added
+- **Settings menu** with selectable board themes/modes (Classic, Dark,
+  Battery Saver, Arcade) and an expanded/permissive dictionary toggle that also
+  accepts common/edgy words outside the official Scrabble list.
+
+## [1.2.0] - 2026-06-21
+
+### Added
+- **Mobile-tightened game screen:** one-row scoreboard (player columns + bag),
+  all seven rack tiles on a single row, and the action buttons on one row.
+- **Rack reordering** by dragging tiles.
+- **Suggest:** rearranges the rack to spell the best available word (without
+  placing anything on the board).
+
+## [1.1.0] - 2026-06-21
+
+### Added
+- **Offline computer opponent** with Easy / Medium / Hard difficulty, driven by
+  an anchor-based move generator and validated/scored by the referee.
+
+## [1.0.0] - 2026-06-21
+
+### Added
+- Initial offline Scrabble game: pure-Dart models (`Tile`, `TileBag`, `Player`,
+  `GameBoard`), an in-memory Trie dictionary, the referee/scoring engine, a
+  drag-and-drop 15×15 board UI, and Hive local persistence.
+
+### Fixed
+- **Blank green screen on the web.** CanvasKit and fonts were fetched from a CDN
+  at runtime, which fails offline; the build now bundles them locally
+  (`--no-web-resources-cdn`, bundled Roboto) so the app renders with no network.
+
+[1.7.1]: #171---2026-06-22
+[1.7.0]: #170---2026-06-22
+[1.6.0]: #160---2026-06-22
+[1.5.0]: #150---2026-06-21
+[1.4.0]: #140---2026-06-21
+[1.3.0]: #130---2026-06-21
+[1.2.0]: #120---2026-06-21
+[1.1.0]: #110---2026-06-21
+[1.0.0]: #100---2026-06-21

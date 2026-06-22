@@ -1,3 +1,10 @@
+// lib/engine/referee.dart —
+//
+// Referee & scoring engine. Validates that a move is linear/contiguous/connected,
+// extracts cross-words, applies letter/word multipliers, and awards the bingo bonus.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import '../models/board.dart';
 import '../models/tile.dart';
 import 'dictionary.dart';

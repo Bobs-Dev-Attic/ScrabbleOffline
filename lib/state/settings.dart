@@ -1,3 +1,9 @@
+// lib/state/settings.dart —
+//
+// Persisted, observable user preferences: board theme and dictionary mode.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 

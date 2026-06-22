@@ -1,3 +1,10 @@
+// lib/models/player.dart —
+//
+// Player profile: score, the rack (with stable per-tile ids for animation), and the
+// isAI flag for pass-and-play / bot seats.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'tile.dart';
 
 /// Maximum number of tiles a player may hold on their rack.

@@ -1,3 +1,10 @@
+// lib/ui/board_widget.dart —
+//
+// Renders the 15x15 grid plus committed, pending, and ghost tiles, and hosts the
+// drag targets for placing/moving tiles.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'package:flutter/material.dart';
 
 import '../models/board.dart';

@@ -1,3 +1,9 @@
+// lib/ui/settings_screen.dart —
+//
+// Settings UI: board theme selection, dictionary mode, and update/version actions.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'package:flutter/material.dart';
 
 import '../app_info.dart';

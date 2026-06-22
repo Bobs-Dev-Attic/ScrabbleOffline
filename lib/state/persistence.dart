@@ -1,3 +1,9 @@
+// lib/state/persistence.dart —
+//
+// Hive-backed save/load of the board, players, and bag (the offline persistence layer).
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/board.dart';

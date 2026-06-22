@@ -1,3 +1,9 @@
+// lib/ui/tile_widget.dart —
+//
+// Visual for a single tile, themed, with an optional 3D bevel/gloss in rich themes.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'package:flutter/material.dart';
 
 import '../models/tile.dart';

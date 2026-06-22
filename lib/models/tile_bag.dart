@@ -1,3 +1,10 @@
+// lib/models/tile_bag.dart —
+//
+// The tile bag: the standard 100-tile English distribution, Fisher-Yates shuffle,
+// and draws.
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'dart:math';
 
 import 'tile.dart';

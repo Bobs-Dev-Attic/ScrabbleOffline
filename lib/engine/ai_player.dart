@@ -1,3 +1,10 @@
+// lib/engine/ai_player.dart —
+//
+// Computer opponent. Asks the MoveGenerator for candidate moves and picks one
+// according to the chosen difficulty (easy/medium/hard).
+//
+// See docs/DESIGN.md for how this fits the overall architecture.
+
 import 'dart:math';
 
 import '../models/board.dart';
