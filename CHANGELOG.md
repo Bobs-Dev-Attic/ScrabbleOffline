@@ -17,6 +17,30 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.10.0] - 2026-06-22
+
+### Changed
+- **Resilient, atomic saved games.** The game now persists as a single
+  versioned snapshot written in one operation, so a crash mid-save can't leave
+  a half-written state. Loading is defensive: a corrupt, stale, or tampered
+  save is detected (bad board cells, player count, rack size, or turn index),
+  discarded, and reported with a friendly "your saved game was reset" message
+  instead of crashing the "Continue" button. (Backlog P0.1 / P1.8.)
+
+### Security
+- **Validated dictionary updates.** Downloaded word lists are now size-,
+  line-, and content-checked before replacing the in-memory dictionary, so a
+  proxy error page or truncated download can't wipe it; the fetch also times
+  out. (Backlog P0.3.)
+- **Security headers** added on Vercel: `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: no-referrer`, `X-Frame-Options: SAMEORIGIN`, and a
+  restrictive `Permissions-Policy`. (Backlog P0.2, partial.)
+
+### Internal
+- Move history is bounded (200 entries) and `GameState` cleans up its timers on
+  dispose. (Backlog P1.7 / P1.9.) Added persistence and dictionary-validation
+  tests; backlog status recorded in `TODO.md`.
+
 ## [1.9.0] - 2026-06-22
 
 ### Added
