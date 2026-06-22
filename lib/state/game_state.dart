@@ -23,6 +23,16 @@ class PendingPlacement {
   const PendingPlacement(this.row, this.col, this.tile, this.rackIndex);
 }
 
+/// One entry in the game's move history (shown in the horizontal log).
+class MoveLogEntry {
+  final String player;
+  final String label; // a word, or "pass" / "swap"
+  final int points;
+  final bool isBingo;
+
+  const MoveLogEntry(this.player, this.label, this.points, {this.isBingo = false});
+}
+
 /// Central, observable game controller. Owns all mutable state and notifies
 /// the UI via [ChangeNotifier]. Persists after every committed turn.
 class GameState extends ChangeNotifier {
@@ -38,6 +48,9 @@ class GameState extends ChangeNotifier {
 
   /// Pending placements keyed by "row,col" for the in-progress turn.
   final Map<String, PendingPlacement> pending = {};
+
+  /// Chronological log of moves, shown in the game screen's history strip.
+  final List<MoveLogEntry> history = [];
 
   /// Transient status message surfaced to the player (errors, last score, ...).
   String statusMessage = '';
@@ -143,6 +156,7 @@ class GameState extends ChangeNotifier {
     lastPlaced = {};
     lastPlacedOrder = {};
     suggestedIds = {};
+    history.clear();
     _cancelGhostFade();
     ghosts = {};
     _suggestionCycle = [];
@@ -169,6 +183,7 @@ class GameState extends ChangeNotifier {
     lastPlaced = {};
     lastPlacedOrder = {};
     suggestedIds = {};
+    history.clear();
     _cancelGhostFade();
     ghosts = {};
     _suggestionCycle = [];
@@ -211,7 +226,7 @@ class GameState extends ChangeNotifier {
     if (ghosts.isNotEmpty && !ghostsFading) {
       ghostsFading = true;
       _ghostFadeTimer?.cancel();
-      _ghostFadeTimer = Timer(const Duration(milliseconds: 5500), () {
+      _ghostFadeTimer = Timer(const Duration(milliseconds: 8500), () {
         ghosts = {};
         ghostsFading = false;
         notifyListeners();
@@ -440,6 +455,12 @@ class GameState extends ChangeNotifier {
     final summary = result.words.map((w) => '${w.word} (${w.score})').join(', ');
     statusMessage = '${currentPlayer.name} scored ${result.score}'
         '${result.isBingo ? ' — BINGO! +$kBingoBonus' : ''} • $summary';
+    history.add(MoveLogEntry(
+      currentPlayer.name,
+      result.words.isNotEmpty ? result.words.first.word : 'move',
+      result.score,
+      isBingo: result.isBingo,
+    ));
 
     pending.clear();
     _cancelGhostFade();
@@ -460,6 +481,7 @@ class GameState extends ChangeNotifier {
     recallAll();
     consecutivePasses++;
     statusMessage = '${currentPlayer.name} passed.';
+    history.add(MoveLogEntry(currentPlayer.name, 'pass', 0));
     if (consecutivePasses >= players.length * 2) {
       _endGame();
     } else {
@@ -492,6 +514,7 @@ class GameState extends ChangeNotifier {
     bag.returnTiles(returned);
     consecutivePasses = 0;
     statusMessage = '${currentPlayer.name} exchanged ${returned.length} tiles.';
+    history.add(MoveLogEntry(currentPlayer.name, 'swap', 0));
     _advanceTurn();
     _persist();
     notifyListeners();

@@ -105,8 +105,8 @@ class BoardWidget extends StatelessWidget {
       content = ghost != null
           ? AnimatedOpacity(
               opacity: game.ghostsFading ? 0.0 : 0.45,
-              duration: Duration(milliseconds: game.ghostsFading ? 5500 : 0),
-              curve: Curves.easeOut,
+              duration: Duration(milliseconds: game.ghostsFading ? 8500 : 0),
+              curve: Curves.easeInOut,
               child: TileWidget(tile: ghost, size: size, highlighted: true),
             )
           : _premiumLabel(theme, cellType, size);

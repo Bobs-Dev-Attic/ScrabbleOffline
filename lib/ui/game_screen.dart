@@ -24,6 +24,13 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   bool _exchangeMode = false;
   final Set<int> _selectedForExchange = {};
+  final ScrollController _historyController = ScrollController();
+
+  @override
+  void dispose() {
+    _historyController.dispose();
+    super.dispose();
+  }
 
   GameState get game => widget.game;
 
@@ -123,6 +130,8 @@ class _GameScreenState extends State<GameScreen> {
                 _rack(),
                 const SizedBox(height: 12),
                 _controls(),
+                const SizedBox(height: 8),
+                _history(),
               ],
             ),
           ),
@@ -145,7 +154,74 @@ class _GameScreenState extends State<GameScreen> {
           _rack(),
           const SizedBox(height: 8),
           _controls(),
+          const SizedBox(height: 8),
+          _history(),
         ],
+      ),
+    );
+  }
+
+  /// Horizontal, scrollable strip of recent moves.
+  Widget _history() {
+    final h = game.history;
+    // Keep the newest entry visible.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_historyController.hasClients) {
+        _historyController.jumpTo(_historyController.position.maxScrollExtent);
+      }
+    });
+    return Container(
+      height: 38,
+      decoration: BoxDecoration(
+        color: _theme.panel.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: h.isEmpty
+          ? const Center(
+              child: Text('Moves appear here',
+                  style: TextStyle(color: Colors.white38, fontSize: 12)))
+          : ListView.separated(
+              controller: _historyController,
+              scrollDirection: Axis.horizontal,
+              itemCount: h.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              itemBuilder: (context, i) => _historyChip(h[i]),
+            ),
+    );
+  }
+
+  Widget _historyChip(MoveLogEntry e) {
+    final scoring = e.points > 0;
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: e.isBingo ? _theme.accent : Colors.white24,
+            width: e.isBingo ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('${e.player}: ',
+                style: const TextStyle(color: Colors.white60, fontSize: 12)),
+            Text(e.label,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold)),
+            if (scoring)
+              Text('  +${e.points}',
+                  style: TextStyle(
+                      color: _theme.accent.withValues(alpha: 0.95),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
     );
   }
