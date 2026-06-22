@@ -55,7 +55,20 @@ def main():
     sw = """'use strict';
 // Offline caching service worker for Scrabble Offline (PWA).
 const CACHE = 'scrabble-offline-%s';
+// Runtime responses live in a separate, size-capped cache so they can never
+// evict the precached app shell (which must stay complete for offline launch).
+const RUNTIME = 'scrabble-runtime-%s';
+const RUNTIME_MAX = 64;
 const RESOURCES = %s;
+
+async function trimCache(name, max) {
+  const cache = await caches.open(name);
+  const keys = await cache.keys();
+  // Oldest entries are first; delete from the front until within the cap.
+  for (let i = 0; i < keys.length - max; i++) {
+    await cache.delete(keys[i]);
+  }
+}
 
 self.addEventListener('install', (event) => {
   // No skipWaiting(): a new version waits so the app can show "update available".
@@ -78,7 +91,9 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+    await Promise.all(keys
+        .filter((k) => k !== CACHE && k !== RUNTIME)
+        .map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
 });
@@ -112,10 +127,14 @@ self.addEventListener('fetch', (event) => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(req, { ignoreSearch: true });
     if (cached) return cached;
+    const runtime = await caches.open(RUNTIME);
+    const runtimeHit = await runtime.match(req, { ignoreSearch: true });
+    if (runtimeHit) return runtimeHit;
     try {
       const resp = await fetch(req);
       if (resp && resp.status === 200 && resp.type === 'basic') {
-        cache.put(req, resp.clone());
+        await runtime.put(req, resp.clone());
+        trimCache(RUNTIME, RUNTIME_MAX);
       }
       return resp;
     } catch (err) {
@@ -128,7 +147,7 @@ self.addEventListener('fetch', (event) => {
     }
   })());
 });
-""" % (version, resources)
+""" % (version, version, resources)
 
     with open(SW, "w") as f:
         f.write(sw)

@@ -1,4 +1,4 @@
-# Scrabble Offline — Design Documentation
+# Scrabbled Offline — Design Documentation
 
 A 100% offline, standalone Scrabble game built with **Flutter Web** and
 deployed as a static **Progressive Web App** (PWA) on Vercel. There are no

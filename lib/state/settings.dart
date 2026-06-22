@@ -44,4 +44,13 @@ class SettingsController extends ChangeNotifier {
     _box?.put('permissive', value);
     notifyListeners();
   }
+
+  /// Wipes stored preferences and returns to defaults. Used by the Settings
+  /// "Reset local data" action (alongside clearing the saved game).
+  Future<void> resetToDefaults() async {
+    await _box?.clear();
+    themeId = AppThemeId.classic;
+    permissiveDictionary = false;
+    notifyListeners();
+  }
 }

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to **Scrabble Offline** are recorded here. The format is
+All notable changes to **Scrabbled Offline** are recorded here. The format is
 loosely based on [Keep a Changelog](https://keepachangelog.com/), and the
 project aims to follow [Semantic Versioning](https://semver.org/).
 
@@ -16,6 +16,28 @@ This list was reconstructed from the project's git history; versions group
 related commits into coherent, user-facing milestones.
 
 ---
+
+## [1.11.0] - 2026-06-22
+
+### Changed
+- **Renamed to "Scrabbled Offline."** Updated the app title, home headline,
+  PWA manifest, install prompts, and documentation. Added an unofficial /
+  non-affiliation note. (The internal Dart package name is unchanged.)
+
+### Added
+- **Reset local data** in Settings → Privacy & data: erases the saved game and
+  resets preferences to defaults.
+- **Privacy statement** in Settings (and README): no accounts, no telemetry,
+  gameplay stays on device.
+
+### Security
+- Added `Cross-Origin-Opener-Policy: same-origin` and extended the
+  `Permissions-Policy` (now also denies `serial` and `payment`).
+- Service-worker runtime responses use a separate, **size-capped** cache so
+  they can never evict the precached offline app shell.
+- Pinned the **Flutter SDK** to an explicit version in `vercel_build.sh` for
+  reproducible builds.
+- Recorded current status and accepted/deferred items in `SECURITY_REVIEW.md`.
 
 ## [1.10.0] - 2026-06-22
 

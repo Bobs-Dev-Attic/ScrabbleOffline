@@ -224,6 +224,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const _SectionTitle('App'),
               _updatesTile(online),
               _updateLogTile(),
+              const SizedBox(height: 20),
+              const _SectionTitle('Privacy & data'),
+              _privacyTile(),
+              _resetDataTile(),
             ],
           );
         },
@@ -432,6 +436,80 @@ class _SettingsScreenState extends State<SettingsScreen> {
         trailing: const Icon(Icons.chevron_right, color: Colors.white54),
         onTap: _showUpdateLog,
       ),
+    );
+  }
+
+  Widget _privacyTile() {
+    return Card(
+      color: const Color(0x22FFFFFF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: const Padding(
+        padding: EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.lock_outline, color: Colors.white70),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'This game runs entirely on your device. There are no accounts, '
+                'no sign-in, and no gameplay or analytics data ever leaves your '
+                'device. Your saved game and preferences are stored locally in '
+                'your browser and can be removed anytime below.',
+                style: TextStyle(color: Colors.white70, fontSize: 12.5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _resetDataTile() {
+    return Card(
+      color: const Color(0x22FFFFFF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: ListTile(
+        leading: const Icon(Icons.delete_outline, color: Colors.white70),
+        title: const Text('Reset local data',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        subtitle: const Text(
+            'Erase the saved game and preferences stored in this browser.',
+            style: TextStyle(color: Colors.white70, fontSize: 12)),
+        trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+        onTap: _confirmResetData,
+      ),
+    );
+  }
+
+  Future<void> _confirmResetData() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset local data?'),
+        content: const Text(
+            'This erases your saved game and resets preferences to defaults. '
+            'This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await widget.game.persistence.clear();
+    widget.game.dictionary.permissive = false;
+    await settings.resetToDefaults();
+    pwaLog('Settings: local data reset by user.');
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Local data cleared.')),
     );
   }
 

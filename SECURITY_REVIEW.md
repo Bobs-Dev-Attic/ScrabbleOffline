@@ -4,6 +4,21 @@
 
 The app has a favorable baseline because gameplay is local-only: there are no accounts, payments, backend APIs, cloud databases, or multiplayer network channels. The main security concerns are therefore client-side integrity, supply chain, browser storage abuse/corruption, service-worker update behavior, legal/privacy transparency, and web hardening headers.
 
+## Implementation status (updated 2026-06-22)
+
+**Done**
+- Persistence stored as a single versioned snapshot; restored fields validated; Hive exceptions handled without surfacing stack traces (v1.10.0).
+- Dictionary updates validated (size/line/min-count/charset) with a fetch timeout before replacing the trie (v1.10.0).
+- Security headers in `vercel.json`: `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: SAMEORIGIN`, `Cross-Origin-Opener-Policy: same-origin`, and a restrictive `Permissions-Policy` (camera/mic/geolocation/sensors/usb/serial/payment denied).
+- Service-worker updates remain user-initiated; runtime responses now use a separate, size-capped cache (`RUNTIME_MAX`) that can't evict the precached app shell.
+- "Reset local data" action in Settings; plain-language privacy copy in Settings and README.
+- Flutter SDK pinned to an explicit version in `vercel_build.sh` for reproducible builds.
+- Product renamed to "Scrabbled Offline" with an unofficial/non-affiliation note (reduces trademark exposure).
+
+**Accepted / deferred** (low value for a static, no-secrets, same-origin offline app)
+- Strict `Content-Security-Policy` + externalizing the inline PWA helper JS — deferred (CanvasKit needs `wasm-unsafe-eval`; revisit if the inline script is moved out).
+- Save export/import, asset-manifest SHA verification, documented SW rollback runbook, and automated dependency-review/lockfile-drift CI — tracked as future work (see TODO.md P3).
+
 ## Assets worth protecting
 
 - User trust that the app works offline and does not transmit gameplay.

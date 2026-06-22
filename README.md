@@ -1,9 +1,12 @@
-# ScrabbleOffline
+# Scrabbled Offline
 
-A 100% offline, standalone **Scrabble** game built with **Flutter Web** and
-optimized for static deployment on **Vercel**. No cloud, no Firebase, no API
-calls — all word validation, scoring, and state persistence happen entirely
-on-device.
+**Scrabbled Offline** is a 100% offline, standalone word game built with
+**Flutter Web** and optimized for static deployment on **Vercel**. No cloud,
+no Firebase, no API calls — all word validation, scoring, and state persistence
+happen entirely on-device.
+
+> Scrabbled Offline is an unofficial, independent word game and is not
+> affiliated with or endorsed by the owners of the SCRABBLE™ trademark.
 
 ## Features
 

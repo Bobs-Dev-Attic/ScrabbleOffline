@@ -80,7 +80,7 @@ class _ScrabbleAppState extends State<ScrabbleApp> {
           builder: (context, _) {
             final theme = services.settings.theme;
             return MaterialApp(
-              title: 'Scrabble Offline',
+              title: 'Scrabbled Offline',
               debugShowCheckedModeBanner: false,
               theme: theme.materialTheme,
               builder: (context, child) =>
@@ -97,7 +97,7 @@ class _ScrabbleAppState extends State<ScrabbleApp> {
   }
 
   Widget _bareApp(Widget home, GameTheme theme) => MaterialApp(
-        title: 'Scrabble Offline',
+        title: 'Scrabbled Offline',
         debugShowCheckedModeBanner: false,
         theme: theme.materialTheme,
         home: home,
@@ -115,12 +115,18 @@ class _LoadingScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('SCRABBLE',
-                style: TextStyle(
-                    fontSize: 42,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 6,
-                    color: Colors.white)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text('SCRABBLED',
+                    style: TextStyle(
+                        fontSize: 42,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 6,
+                        color: Colors.white)),
+              ),
+            ),
             SizedBox(height: 8),
             Text('Offline Edition', style: TextStyle(color: Colors.white70)),
             SizedBox(height: 24),
@@ -299,12 +305,18 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('SCRABBLE',
-                style: TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 8,
-                    color: Colors.white)),
+            const FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text('SCRABBLED',
+                    style: TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 8,
+                        color: Colors.white)),
+              ),
+            ),
             const SizedBox(height: 4),
             Text(
               'Offline • ${game.dictionary.wordCount} words'
@@ -465,7 +477,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!context.mounted) return;
       if (outcome == 'accepted') {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Installing Scrabble Offline…')),
+          const SnackBar(content: Text('Installing Scrabbled Offline…')),
         );
         return;
       }
@@ -475,7 +487,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Install Scrabble Offline'),
+        title: const Text('Install Scrabbled Offline'),
         content: const Text(
           'Add it to your home screen to play full-screen and offline.\n\n'
           '• iPhone/iPad (Safari): tap the Share button, then '

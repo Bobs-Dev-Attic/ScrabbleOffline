@@ -4,7 +4,9 @@
 # compile to static assets in build/web (zero runtime/server dependencies).
 set -euo pipefail
 
-FLUTTER_VERSION="${FLUTTER_VERSION:-stable}"
+# Pin to an explicit SDK tag for reproducible builds (overridable via env).
+# Matches the version used in development; bump deliberately.
+FLUTTER_VERSION="${FLUTTER_VERSION:-3.44.2}"
 FLUTTER_DIR="$HOME/flutter"
 
 if [ ! -d "$FLUTTER_DIR" ]; then

@@ -1,7 +1,7 @@
-# CLAUDE.md - Offline Scrabble (Flutter Web / Vercel)
+# CLAUDE.md - Scrabbled Offline (Flutter Web / Vercel)
 
 ## Project Overview
-A 100% offline, standalone Scrabble game built with Flutter Web and optimized for static deployment on Vercel. The application relies entirely on local memory, asset bundles, and client-side persistence, requiring zero external server handshakes or API network connectivity.
+Scrabbled Offline is a 100% offline, standalone word game built with Flutter Web and optimized for static deployment on Vercel. The application relies entirely on local memory, asset bundles, and client-side persistence, requiring zero external server handshakes or API network connectivity.
 
 ## Core Architectural Boundaries
 - **No Cloud Dependencies:** Absolutely no Firebase, AWS, or external database configurations.

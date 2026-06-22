@@ -1,11 +1,11 @@
 {
-    "name": "Scrabble Offline",
-    "short_name": "Scrabble",
+    "name": "Scrabbled Offline",
+    "short_name": "Scrabbled",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#1B5E20",
     "theme_color": "#1B5E20",
-    "description": "A 100% offline Scrabble game.",
+    "description": "A 100% offline word game.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
