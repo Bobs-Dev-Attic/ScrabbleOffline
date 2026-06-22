@@ -54,8 +54,10 @@ three keys (`board_matrix`, `player_pool`, `bag_state`) to the
 - **[`CHANGELOG.md`](CHANGELOG.md)** — release notes / running list of updates.
 - **[`CLAUDE.md`](CLAUDE.md)** — the product spec and architectural boundaries.
 
-The displayed app version lives in `lib/app_info.dart` (`kAppVersion`) and
-`pubspec.yaml`; bump both and add a `CHANGELOG.md` entry per release.
+`CHANGELOG.md` is the single source of truth for the version: add a
+`## [X.Y.Z]` entry at the top, then run `python3 tool/sync_version.py` to
+propagate it into `lib/app_info.dart` (`kAppVersion`) and `pubspec.yaml`. The
+build runs this automatically and a test guards against drift.
 
 ## Run locally
 

@@ -16,6 +16,9 @@ export PATH="$PATH:$FLUTTER_DIR/bin"
 
 flutter config --enable-web --no-analytics
 flutter pub get
+# Keep the displayed app version in lockstep with CHANGELOG.md (single source
+# of truth): propagates the top changelog version into app_info.dart/pubspec.
+python3 tool/sync_version.py
 # --no-web-resources-cdn bundles CanvasKit locally so the app loads with zero
 # external CDN dependencies (truly offline, per the project requirements).
 # --no-tree-shake-icons ships the full Material Icons font with stable
