@@ -88,15 +88,48 @@ class GameState extends ChangeNotifier {
   Map<String, Tile> ghosts = {};
   Tile? ghostAt(int row, int col) => ghosts['$row,$col'];
 
-  /// True once the player starts placing tiles: the ghosts fade out (the board
-  /// animates their opacity to 0) before being cleared.
+  /// True once the suggestion ghosts begin fading: the board animates their
+  /// opacity to 0 over [kGhostFadeMs] before they are cleared.
   bool ghostsFading = false;
   Timer? _ghostFadeTimer;
+  Timer? _ghostFadeStartTimer;
+
+  /// How long the slow ghost fade-out takes (also used by the board's
+  /// AnimatedOpacity). The ghosts hold at full opacity briefly, then fade,
+  /// so they disappear roughly 8-9s after a suggestion is shown.
+  static const int kGhostFadeMs = 8500;
 
   void _cancelGhostFade() {
     _ghostFadeTimer?.cancel();
     _ghostFadeTimer = null;
+    _ghostFadeStartTimer?.cancel();
+    _ghostFadeStartTimer = null;
     ghostsFading = false;
+  }
+
+  /// Begins fading the suggestion ghosts now: animates them out over
+  /// [kGhostFadeMs], then clears them. Safe to call repeatedly.
+  void _beginGhostFade() {
+    if (ghosts.isEmpty || ghostsFading) return;
+    ghostsFading = true;
+    _ghostFadeTimer?.cancel();
+    _ghostFadeTimer = Timer(const Duration(milliseconds: kGhostFadeMs), () {
+      ghosts = {};
+      ghostsFading = false;
+      notifyListeners();
+    });
+    notifyListeners();
+  }
+
+  /// Arms the automatic ghost fade: the ghosts render at full opacity for a
+  /// brief hold (one frame is required so the opacity animation has a starting
+  /// value), then fade out on their own — even if the player never places a
+  /// tile. The caller is expected to notifyListeners() after setting ghosts.
+  void _scheduleGhostFade() {
+    _ghostFadeStartTimer?.cancel();
+    _ghostFadeStartTimer = Timer(const Duration(milliseconds: 500), () {
+      _beginGhostFade();
+    });
   }
 
   /// Cycle of suggested moves; pressing Suggest repeatedly advances through
@@ -222,16 +255,8 @@ class GameState extends ChangeNotifier {
     final placed = tile ?? currentPlayer.rack[rackIndex];
     pending['$row,$col'] = PendingPlacement(row, col, placed, rackIndex);
     statusMessage = '';
-    // Once the player starts placing, fade the suggestion ghosts out.
-    if (ghosts.isNotEmpty && !ghostsFading) {
-      ghostsFading = true;
-      _ghostFadeTimer?.cancel();
-      _ghostFadeTimer = Timer(const Duration(milliseconds: 8500), () {
-        ghosts = {};
-        ghostsFading = false;
-        notifyListeners();
-      });
-    }
+    // Once the player starts placing, fade the suggestion ghosts out now.
+    _beginGhostFade();
     notifyListeners();
     return true;
   }
@@ -375,11 +400,13 @@ class GameState extends ChangeNotifier {
       ..clear()
       ..addAll(newIds);
 
-    // Ghost tiles show exactly where this suggestion would be placed.
+    // Ghost tiles show exactly where this suggestion would be placed. They
+    // hold at full opacity briefly, then slowly fade out on their own.
     _cancelGhostFade();
     ghosts = {
       for (final p in best.placements) '${p.row},${p.col}': p.tile,
     };
+    _scheduleGhostFade();
 
     suggestedIds = newIds.take(usedOrder.length).toSet();
     suggestSerial++;
