@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../app_info.dart';
+import '../engine/dictionary.dart';
 import '../state/game_state.dart';
 import '../state/settings.dart';
 import 'game_theme.dart';
@@ -146,24 +147,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
     pwaLog('Settings: Update word list tapped.');
     final dict = widget.game.dictionary;
     final raw = await pwaFetchText('assets/assets/dictionary.txt');
-    if (raw != null && mounted) {
-      final n = dict.refreshFromRaw(raw);
-      if (dict.permissive) {
-        final ext = await pwaFetchText('assets/assets/dictionary_extended.txt');
-        if (ext != null) dict.refreshExtendedFromRaw(ext);
-      }
-      pwaLog('Settings: word list updated — $n words.');
-      setState(() {
-        _updatingDict = false;
-        _dictMsg = 'Updated — $n words loaded.';
-      });
-    } else if (mounted) {
-      pwaLog('Settings: word list update failed (offline?).');
+    if (!mounted) return;
+    if (raw == null) {
+      pwaLog('Settings: word list fetch failed (offline?).');
       setState(() {
         _updatingDict = false;
         _dictMsg = 'Could not update (are you online?).';
       });
+      return;
     }
+    // Validate the response before replacing the live dictionary, so a proxy
+    // error page or truncated download can't wipe it out.
+    final n = dict.refreshFromRawValidated(raw);
+    if (n < 0) {
+      pwaLog('Settings: word list rejected — response failed validation '
+          '(${raw.length} bytes).');
+      setState(() {
+        _updatingDict = false;
+        _dictMsg = 'Update rejected — the response didn\'t look like a '
+            'word list. Kept the current dictionary.';
+      });
+      return;
+    }
+    if (dict.permissive) {
+      final ext = await pwaFetchText('assets/assets/dictionary_extended.txt');
+      if (ext != null && Dictionary.looksLikeWordList(ext)) {
+        dict.refreshExtendedFromRaw(ext);
+      } else {
+        pwaLog('Settings: expanded supplement skipped (missing/invalid).');
+      }
+    }
+    pwaLog('Settings: word list updated — $n words.');
+    if (!mounted) return;
+    setState(() {
+      _updatingDict = false;
+      _dictMsg = 'Updated — $n words loaded.';
+    });
   }
 
   Future<void> _togglePermissive(bool value) async {

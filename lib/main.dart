@@ -341,8 +341,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.white24,
                 onPressed: () {
                   final saved = game.persistence.load();
-                  if (saved != null) game.restore(saved);
-                  _open(context);
+                  if (saved != null) {
+                    game.restore(saved);
+                    _open(context);
+                  } else {
+                    // The save was corrupt and has been reset; stay on the home
+                    // screen and tell the user instead of opening a broken game.
+                    final msg = game.persistence.lastLoadError ??
+                        'No saved game to continue.';
+                    setState(() {}); // refresh: the Continue button disappears
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(msg)),
+                    );
+                  }
                 },
               ),
             ],

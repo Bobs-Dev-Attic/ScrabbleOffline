@@ -150,10 +150,11 @@ bool pwaIsOnline() {
 }
 
 /// Fetches text fresh from the network (bypassing caches). Returns null on
-/// failure (e.g. offline).
-Future<String?> pwaFetchText(String url) async {
+/// failure (e.g. offline) or if the request takes longer than [timeout].
+Future<String?> pwaFetchText(String url,
+    {Duration timeout = const Duration(seconds: 20)}) async {
   try {
-    final result = await _fetchText(url.toJS).toDart;
+    final result = await _fetchText(url.toJS).toDart.timeout(timeout);
     return result.toDart;
   } catch (_) {
     return null;

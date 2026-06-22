@@ -75,6 +75,53 @@ class Dictionary {
     return _trie.wordCount;
   }
 
+  // ---- Defensive validation for downloaded word lists ----
+  // Fetched dictionary text is same-origin but still untrusted: a proxy error
+  // page, truncated download, or tampered response must not silently replace
+  // the in-memory dictionary. Callers gate refreshFromRaw on this.
+
+  /// Hard ceiling on a downloaded list (bytes). The bundled list is ~2 MB; this
+  /// leaves generous headroom while rejecting absurd payloads.
+  static const int maxRawBytes = 16 * 1024 * 1024;
+
+  /// Hard ceiling on line count.
+  static const int maxRawLines = 600000;
+
+  /// Minimum number of words for a response to be considered a real word list.
+  static const int minWords = 1000;
+
+  /// Returns true if [raw] plausibly looks like a newline-delimited word list:
+  /// within size/line bounds, enough entries, and a sample of entries are
+  /// purely alphabetic (rejecting HTML error pages, JSON, truncated junk, etc.).
+  static bool looksLikeWordList(String raw) {
+    if (raw.isEmpty || raw.length > maxRawBytes) return false;
+    final lines = raw.split('\n');
+    if (lines.length > maxRawLines) return false;
+    final alpha = RegExp(r'^[A-Za-z]+$');
+    var words = 0;
+    var sampled = 0;
+    for (final line in lines) {
+      final w = line.trim();
+      if (w.isEmpty) continue;
+      words++;
+      // Validate the shape of the first 500 non-empty entries; if any of those
+      // isn't a plain alphabetic word, this isn't our dictionary.
+      if (sampled < 500) {
+        if (!alpha.hasMatch(w)) return false;
+        sampled++;
+      }
+    }
+    return words >= minWords;
+  }
+
+  /// Validates [raw] and, if it looks like a real word list, rebuilds the trie.
+  /// Returns the new word count, or -1 if [raw] failed validation (leaving the
+  /// existing dictionary untouched).
+  int refreshFromRawValidated(String raw) {
+    if (!looksLikeWordList(raw)) return -1;
+    return refreshFromRaw(raw);
+  }
+
   /// Rebuilds the expanded supplement in place from fresh raw text.
   void refreshExtendedFromRaw(String raw) {
     final set = <String>{};

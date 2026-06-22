@@ -57,7 +57,20 @@ class GameState extends ChangeNotifier {
   final Map<String, PendingPlacement> pending = {};
 
   /// Chronological log of moves, shown in the game screen's history strip.
+  /// Bounded to the most recent [kMaxHistory] entries so a very long game can't
+  /// grow it without limit.
   final List<MoveLogEntry> history = [];
+
+  /// Maximum number of move-log entries retained.
+  static const int kMaxHistory = 200;
+
+  /// Appends a move-log entry, trimming the oldest beyond [kMaxHistory].
+  void _addHistory(MoveLogEntry entry) {
+    history.add(entry);
+    if (history.length > kMaxHistory) {
+      history.removeRange(0, history.length - kMaxHistory);
+    }
+  }
 
   /// Transient status message surfaced to the player (errors, last score, ...).
   String statusMessage = '';
@@ -101,6 +114,18 @@ class GameState extends ChangeNotifier {
   Timer? _ghostFadeTimer;
   Timer? _ghostFadeStartTimer;
 
+  /// Set once the controller is disposed, so pending timers / scheduled AI
+  /// turns don't call notifyListeners() on a dead notifier.
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _ghostFadeTimer?.cancel();
+    _ghostFadeStartTimer?.cancel();
+    super.dispose();
+  }
+
   /// How long the slow ghost fade-out takes (also used by the board's
   /// AnimatedOpacity). The ghosts hold at full opacity briefly, then fade,
   /// so they disappear roughly 8-9s after a suggestion is shown.
@@ -121,6 +146,7 @@ class GameState extends ChangeNotifier {
     ghostsFading = true;
     _ghostFadeTimer?.cancel();
     _ghostFadeTimer = Timer(const Duration(milliseconds: kGhostFadeMs), () {
+      if (_disposed) return;
       ghosts = {};
       ghostsFading = false;
       notifyListeners();
@@ -135,6 +161,7 @@ class GameState extends ChangeNotifier {
   void _scheduleGhostFade() {
     _ghostFadeStartTimer?.cancel();
     _ghostFadeStartTimer = Timer(const Duration(milliseconds: 500), () {
+      if (_disposed) return;
       _beginGhostFade();
     });
   }
@@ -489,7 +516,7 @@ class GameState extends ChangeNotifier {
     final summary = result.words.map((w) => '${w.word} (${w.score})').join(', ');
     statusMessage = '${currentPlayer.name} scored ${result.score}'
         '${result.isBingo ? ' — BINGO! +$kBingoBonus' : ''} • $summary';
-    history.add(MoveLogEntry(
+    _addHistory(MoveLogEntry(
       currentPlayer.name,
       result.words.isNotEmpty ? result.words.first.word : 'move',
       result.score,
@@ -515,7 +542,7 @@ class GameState extends ChangeNotifier {
     recallAll();
     consecutivePasses++;
     statusMessage = '${currentPlayer.name} passed.';
-    history.add(MoveLogEntry(currentPlayer.name, 'pass', 0));
+    _addHistory(MoveLogEntry(currentPlayer.name, 'pass', 0));
     if (consecutivePasses >= players.length * 2) {
       _endGame();
     } else {
@@ -548,7 +575,7 @@ class GameState extends ChangeNotifier {
     bag.returnTiles(returned);
     consecutivePasses = 0;
     statusMessage = '${currentPlayer.name} exchanged ${returned.length} tiles.';
-    history.add(MoveLogEntry(currentPlayer.name, 'swap', 0));
+    _addHistory(MoveLogEntry(currentPlayer.name, 'swap', 0));
     _advanceTurn();
     _persist();
     notifyListeners();
@@ -566,6 +593,7 @@ class GameState extends ChangeNotifier {
     notifyListeners();
     final token = _aiToken;
     Future.delayed(const Duration(milliseconds: 650), () {
+      if (_disposed) return;
       if (token == _aiToken) _runAiTurn();
     });
   }
