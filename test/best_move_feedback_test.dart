@@ -16,6 +16,7 @@ class _FakePersistence extends GamePersistence {
     required players,
     required bag,
     required currentPlayerIndex,
+    Map<String, int> tileOwners = const {},
   }) async {}
   @override
   SavedGame? load() => null;
@@ -114,6 +115,31 @@ void main() {
       expect(game.celebrateSerial, 0);
       expect(game.reviewingPotential, isFalse);
       expect(game.currentPlayerIndex, 1);
+    });
+  });
+
+  group('win celebration', () {
+    test('tiles record their owner; a human win celebrates & highlights', () {
+      final game = _game(Dictionary()..loadWords(['AB']));
+      game.newGame(); // 2 humans
+      game.bestMoveFeedbackEnabled = false; // isolate the win celebration
+      // Empty the bag so finishing the rack ends the game.
+      while (!game.bag.isEmpty) {
+        game.bag.draw(100);
+      }
+      _setRack(game, const [Tile(letter: 'A', value: 1), Tile(letter: 'B', value: 3)]);
+
+      game.placeTile(0, 7, 7);
+      game.placeTile(1, 7, 8);
+      final r = game.commitTurn();
+
+      expect(r.valid, isTrue);
+      expect(game.gameOver, isTrue);
+      expect(game.winnerIndex, 0);
+      expect(game.celebrateWin, isTrue);
+      expect(game.celebrateSerial, greaterThan(0), reason: 'confetti fires');
+      expect(game.tileOwners['7,7'], 0);
+      expect(game.tileOwners['7,8'], 0);
     });
   });
 }

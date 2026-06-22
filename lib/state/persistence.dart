@@ -63,6 +63,7 @@ class GamePersistence {
     required List<Player> players,
     required TileBag bag,
     required int currentPlayerIndex,
+    Map<String, int> tileOwners = const {},
   }) async {
     final snapshot = <String, dynamic>{
       'version': schemaVersion,
@@ -70,6 +71,7 @@ class GamePersistence {
       'players': players.map((p) => p.toJson()).toList(),
       'bag': bag.tiles.map((t) => t.toJson()).toList(),
       'current': currentPlayerIndex,
+      'owners': tileOwners,
     };
     await _box.put(keySnapshot, snapshot);
     // Drop the legacy keys once we've written the new format.
@@ -147,11 +149,21 @@ class GamePersistence {
       throw FormatException('currentPlayerIndex $current out of range');
     }
 
+    // Tile ownership is optional (absent in older/legacy saves).
+    final owners = <String, int>{};
+    final rawOwners = raw['owners'];
+    if (rawOwners is Map) {
+      rawOwners.forEach((k, v) {
+        if (k is String && v is int) owners[k] = v;
+      });
+    }
+
     return SavedGame(
       board: board,
       players: players,
       bag: TileBag.fromTiles(tiles),
       currentPlayerIndex: current,
+      tileOwners: owners,
     );
   }
 
@@ -167,11 +179,13 @@ class SavedGame {
   final List<Player> players;
   final TileBag bag;
   final int currentPlayerIndex;
+  final Map<String, int> tileOwners;
 
   SavedGame({
     required this.board,
     required this.players,
     required this.bag,
     required this.currentPlayerIndex,
+    this.tileOwners = const {},
   });
 }

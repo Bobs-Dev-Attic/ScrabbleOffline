@@ -20,6 +20,7 @@ class FakePersistence extends GamePersistence {
     required players,
     required bag,
     required currentPlayerIndex,
+    Map<String, int> tileOwners = const {},
   }) async {}
   @override
   SavedGame? load() => null;

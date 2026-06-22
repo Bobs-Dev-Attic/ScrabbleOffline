@@ -148,6 +148,17 @@ class GameState extends ChangeNotifier {
   int reviewPotential = 0;
   Timer? _reviewTimer;
 
+  /// Cell "r,c" -> index of the player who placed the committed tile there, so
+  /// the winner's tiles can be highlighted at game end.
+  Map<String, int> tileOwners = {};
+
+  /// True once the game ends with a human winner: their tiles are highlighted
+  /// and a confetti celebration fires.
+  bool celebrateWin = false;
+
+  /// Index of the winning player (-1 until the game ends).
+  int winnerIndex = -1;
+
   /// Set once the controller is disposed, so pending timers / scheduled AI
   /// turns don't call notifyListeners() on a dead notifier.
   bool _disposed = false;
@@ -182,6 +193,9 @@ class GameState extends ChangeNotifier {
     reviewPotential = 0;
     _usedSuggestThisTurn = false;
     ghostFadeMs = kGhostFadeMs;
+    celebrateWin = false;
+    winnerIndex = -1;
+    tileOwners = {};
   }
 
   /// Begins fading the suggestion ghosts now: animates them out over
@@ -304,6 +318,7 @@ class GameState extends ChangeNotifier {
     _suggestionSignature = '';
     _suggestionIndex = 0;
     _resetFeedbackState();
+    tileOwners = Map<String, int>.of(saved.tileOwners);
     notifyListeners();
     _scheduleAiTurnIfNeeded();
   }
@@ -603,6 +618,7 @@ class GameState extends ChangeNotifier {
       {bool complete = true}) {
     for (final p in placements) {
       board.cellAt(p.row, p.col).tile = p.tile;
+      tileOwners['${p.row},${p.col}'] = currentPlayerIndex;
     }
 
     // Record freshly placed cells (ordered) for the board drop-in animation.
@@ -810,8 +826,20 @@ class GameState extends ChangeNotifier {
       }
       players[emptied].score += gained;
     }
-    final winner = players.reduce((a, b) => a.score >= b.score ? a : b);
+    // Highest score wins; ties resolve to the lowest index (favoring humans).
+    var winIdx = 0;
+    for (var i = 1; i < players.length; i++) {
+      if (players[i].score > players[winIdx].score) winIdx = i;
+    }
+    winnerIndex = winIdx;
+    final winner = players[winIdx];
     statusMessage = 'Game over — ${winner.name} wins with ${winner.score}!';
+
+    // Celebrate when a human wins: confetti + highlight that player's tiles.
+    if (!winner.isAI) {
+      celebrateWin = true;
+      celebrateSerial++;
+    }
   }
 
   Future<void> _persist() async {
@@ -820,6 +848,7 @@ class GameState extends ChangeNotifier {
       players: players,
       bag: bag,
       currentPlayerIndex: currentPlayerIndex,
+      tileOwners: tileOwners,
     );
   }
 }

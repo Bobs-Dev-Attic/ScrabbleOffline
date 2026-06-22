@@ -17,6 +17,13 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.20.0] - 2026-06-22
+
+### Added
+- **Win celebration.** When the game ends and a human wins, confetti rains down
+  and all of the winner's tiles on the board are highlighted. Tile ownership is
+  now tracked (and saved), so the right tiles light up.
+
 ## [1.19.0] - 2026-06-22
 
 ### Added

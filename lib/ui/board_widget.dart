@@ -97,8 +97,12 @@ class BoardWidget extends StatelessWidget {
 
     Widget content;
     if (committed != null) {
-      final tileWidget = TileWidget(tile: committed, size: size);
       final cellKey = '$row,$col';
+      // At game end, the winner's tiles are highlighted.
+      final wonTile =
+          game.celebrateWin && game.tileOwners[cellKey] == game.winnerIndex;
+      final tileWidget =
+          TileWidget(tile: committed, size: size, highlighted: wonTile);
       final fresh = game.lastPlaced.contains(cellKey);
       // Tiles from the most recent move drop in, staggered along the word.
       Widget tile = (theme.animated && fresh)
