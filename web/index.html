@@ -78,6 +78,14 @@
       var r = window.__swReg;
       if (r && r.waiting) { window.__applyingUpdate = true; r.waiting.postMessage('SKIP_WAITING'); }
     };
+    // Fetch text fresh from the network (bypassing caches). The "?fresh"
+    // param tells the service worker to go network-first for this request.
+    window.pwaFetchText = async function (url) {
+      var sep = url.indexOf('?') >= 0 ? '&' : '?';
+      var resp = await fetch(url + sep + 'fresh=' + Date.now(), { cache: 'reload' });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      return await resp.text();
+    };
 
     // Register the offline caching service worker ourselves. Flutter's loader
     // only refreshes an existing registration (and ships a no-op worker), so a

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'app_info.dart';
 import 'engine/ai_player.dart';
 import 'engine/dictionary.dart';
 import 'state/game_state.dart';
@@ -286,7 +287,8 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: theme.scaffold,
       body: AnimatedBackground(
         theme: theme,
-        child: Center(
+        child: Stack(children: [
+        Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -363,6 +365,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         ),
+        const Positioned(
+          right: 12,
+          bottom: 8,
+          child: Text('v$kAppVersion',
+              style: TextStyle(color: Colors.white38, fontSize: 11)),
+        ),
+        ]),
       ),
     );
   }

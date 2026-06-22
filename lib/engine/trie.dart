@@ -7,13 +7,20 @@ class TrieNode {
 /// In-memory prefix tree for O(L) word and prefix lookups, where L is the
 /// length of the query string. All matching is case-insensitive.
 class Trie {
-  final TrieNode _root = TrieNode();
+  TrieNode _root = TrieNode();
   int _wordCount = 0;
 
   /// Root node, exposed for move-generation traversal.
   TrieNode get root => _root;
 
   int get wordCount => _wordCount;
+
+  /// Empties the trie so it can be rebuilt in place (keeps the same Trie
+  /// instance, so holders like the move generator stay valid).
+  void clear() {
+    _root = TrieNode();
+    _wordCount = 0;
+  }
 
   /// Inserts a single word into the trie.
   void insert(String word) {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Identifiers for the selectable board themes / modes.
-enum AppThemeId { classic, dark, battery, arcade }
+enum AppThemeId { classic, dark, battery, arcade, highContrast }
 
 /// A complete visual palette + behavior flags for the game, selected in
 /// Settings. All themes work fully offline.
@@ -106,6 +106,7 @@ class GameTheme {
         AppThemeId.dark => dark,
         AppThemeId.battery => battery,
         AppThemeId.arcade => arcade,
+        AppThemeId.highContrast => highContrast,
       };
 
   static const classic = GameTheme(
@@ -228,7 +229,37 @@ class GameTheme {
     richDecoration: true,
   );
 
-  static const all = [classic, dark, battery, arcade];
+  static const highContrast = GameTheme(
+    id: AppThemeId.highContrast,
+    label: 'High Contrast',
+    description: 'Bold colors and crisp edges for maximum visibility.',
+    icon: Icons.contrast,
+    brightness: Brightness.dark,
+    seed: Color(0xFFFFEB3B),
+    scaffold: Color(0xFF000000),
+    appBar: Color(0xFF000000),
+    panel: Color(0xFF000000),
+    boardFrame: Color(0xFFFFFFFF),
+    cellStandard: Color(0xFF111111),
+    cellDL: Color(0xFF00B0FF),
+    cellTL: Color(0xFF2962FF),
+    cellDW: Color(0xFFFF9100),
+    cellTW: Color(0xFFFF1744),
+    cellCenter: Color(0xFFFFD600),
+    premiumText: Color(0xFF000000),
+    hover: Color(0x80FFEB3B),
+    tileGradient: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
+    tileBorder: Color(0xFF000000),
+    tileText: Color(0xFF000000),
+    tileValueText: Color(0xFF000000),
+    rack: Color(0xFF000000),
+    accent: Color(0xFFFFEB3B),
+    animated: false,
+    flashy: false,
+    richDecoration: false,
+  );
+
+  static const all = [classic, dark, battery, arcade, highContrast];
 }
 
 /// Provides the active [GameTheme] to the widget subtree.

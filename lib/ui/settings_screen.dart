@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../app_info.dart';
 import '../state/game_state.dart';
 import '../state/settings.dart';
 import 'game_theme.dart';
+import 'pwa_install.dart';
 
 /// Settings: board theme / mode selection and the expanded dictionary toggle.
 class SettingsScreen extends StatefulWidget {
@@ -17,8 +19,53 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _busy = false;
+  bool _checkingUpdate = false;
+  String? _updateMsg;
+  bool _updatingDict = false;
+  String? _dictMsg;
 
   SettingsController get settings => widget.settings;
+
+  Future<void> _checkUpdates() async {
+    setState(() {
+      _checkingUpdate = true;
+      _updateMsg = 'Checking…';
+    });
+    pwaCheckForUpdate();
+    await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
+    setState(() {
+      _checkingUpdate = false;
+      _updateMsg = pwaUpdateAvailable()
+          ? 'Update available.'
+          : "You're on the latest version.";
+    });
+  }
+
+  Future<void> _updateDictionary() async {
+    setState(() {
+      _updatingDict = true;
+      _dictMsg = 'Updating…';
+    });
+    final dict = widget.game.dictionary;
+    final raw = await pwaFetchText('assets/assets/dictionary.txt');
+    if (raw != null && mounted) {
+      final n = dict.refreshFromRaw(raw);
+      if (dict.permissive) {
+        final ext = await pwaFetchText('assets/assets/dictionary_extended.txt');
+        if (ext != null) dict.refreshExtendedFromRaw(ext);
+      }
+      setState(() {
+        _updatingDict = false;
+        _dictMsg = 'Updated — $n words loaded.';
+      });
+    } else if (mounted) {
+      setState(() {
+        _updatingDict = false;
+        _dictMsg = 'Could not update (are you online?).';
+      });
+    }
+  }
 
   Future<void> _togglePermissive(bool value) async {
     if (value) {
@@ -45,6 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: AnimatedBuilder(
         animation: settings,
         builder: (context, _) {
+          final online = pwaIsOnline();
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -53,6 +101,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 20),
               const _SectionTitle('Dictionary'),
               _permissiveTile(),
+              _updateDictionaryTile(online),
+              const SizedBox(height: 20),
+              const _SectionTitle('App'),
+              _updatesTile(online),
             ],
           );
         },
@@ -116,6 +168,100 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _updateDictionaryTile(bool online) {
+    final dict = widget.game.dictionary;
+    final count = dict.wordCount +
+        (dict.permissive && dict.extendedLoaded ? dict.extendedCount : 0);
+    return Card(
+      color: const Color(0x22FFFFFF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: ListTile(
+        leading: const Icon(Icons.sync, color: Colors.white70),
+        title: const Text('Update word list',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        subtitle: Text(
+          _dictMsg ??
+              '$count words loaded.${online ? '' : ' Connect to update.'}',
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+        trailing: ElevatedButton(
+          onPressed: (online && !_updatingDict) ? _updateDictionary : null,
+          child: _updatingDict
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Update'),
+        ),
+      ),
+    );
+  }
+
+  Widget _updatesTile(bool online) {
+    final updateReady = pwaUpdateAvailable();
+    return Card(
+      color: const Color(0x22FFFFFF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.info_outline, color: Colors.white70),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text('Version v$kAppVersion',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+                ElevatedButton(
+                  onPressed: (online && !_checkingUpdate) ? _checkUpdates : null,
+                  child: _checkingUpdate
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child:
+                              CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Check for updates'),
+                ),
+              ],
+            ),
+            if (_updateMsg != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, left: 36),
+                child: Text(_updateMsg!,
+                    style: const TextStyle(color: Colors.white70, fontSize: 13)),
+              ),
+            if (!online)
+              const Padding(
+                padding: EdgeInsets.only(top: 8, left: 36),
+                child: Text('Offline — connect to check for updates.',
+                    style: TextStyle(color: Colors.white54, fontSize: 12)),
+              ),
+            if (updateReady)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber.shade700),
+                    onPressed: pwaApplyUpdate,
+                    icon: const Icon(Icons.system_update_alt),
+                    label: const Text('Update now'),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
