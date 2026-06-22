@@ -338,6 +338,14 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 24),
             _homeButton(
               context,
+              icon: Icons.smart_toy,
+              label: 'vs Computer',
+              color: Colors.lightBlue.shade700,
+              onPressed: () => _startVsComputer(context),
+            ),
+            const SizedBox(height: 12),
+            _homeButton(
+              context,
               icon: Icons.people,
               label: 'Pass & Play',
               color: Colors.amber.shade700,
@@ -345,14 +353,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 game.newGame();
                 _open(context);
               },
-            ),
-            const SizedBox(height: 12),
-            _homeButton(
-              context,
-              icon: Icons.smart_toy,
-              label: 'vs Computer',
-              color: Colors.lightBlue.shade700,
-              onPressed: () => _startVsComputer(context),
             ),
             if (hasSave) ...[
               const SizedBox(height: 12),

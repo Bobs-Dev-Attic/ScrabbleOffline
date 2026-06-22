@@ -17,6 +17,17 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.17.0] - 2026-06-22
+
+### Changed
+- **"vs Computer" is now the top button** on the home screen.
+- The custom-palette dialog text (name field, labels, buttons) is darker and
+  more readable, with a solid green Save button.
+
+### Added
+- The **Suggest button icon now sparkles** — the star shimmers through a
+  rotating multi-color gradient and gently pulses.
+
 ## [1.16.0] - 2026-06-22
 
 ### Added

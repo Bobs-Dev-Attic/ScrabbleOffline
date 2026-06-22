@@ -5,6 +5,8 @@
 //
 // See docs/DESIGN.md for how this fits the overall architecture.
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../models/tile.dart';
@@ -525,6 +527,7 @@ class _GameScreenState extends State<GameScreen> {
           color: Colors.amber.shade600,
           foreground: Colors.black87,
           onPressed: _suggest,
+          iconWidget: const _SparkleIcon(size: 20),
         ),
         _action(
           icon: Icons.check,
@@ -543,6 +546,7 @@ class _GameScreenState extends State<GameScreen> {
     required Color color,
     required VoidCallback? onPressed,
     Color foreground = Colors.white,
+    Widget? iconWidget,
   }) {
     return Expanded(
       child: Padding(
@@ -562,7 +566,7 @@ class _GameScreenState extends State<GameScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 20),
+              iconWidget ?? Icon(icon, size: 20),
               const SizedBox(height: 2),
               Text(label,
                   maxLines: 1,
@@ -682,6 +686,61 @@ class _GameScreenState extends State<GameScreen> {
                   ),
               ],
             ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// An animated "sparkle" icon for the Suggest button: the star shimmers through
+/// a rotating multi-color gradient and gently pulses to draw the eye.
+class _SparkleIcon extends StatefulWidget {
+  final double size;
+  const _SparkleIcon({this.size = 20});
+
+  @override
+  State<_SparkleIcon> createState() => _SparkleIconState();
+}
+
+class _SparkleIconState extends State<_SparkleIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  )..repeat();
+
+  static const _colors = [
+    Color(0xFFFFF59D), // light gold
+    Color(0xFFFFD54F), // amber
+    Color(0xFFFF8A65), // coral
+    Color(0xFFBA68C8), // violet
+    Color(0xFF4FC3F7), // sky
+    Color(0xFFFFF59D), // back to gold (seamless loop)
+  ];
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        final angle = _c.value * 2 * pi;
+        final scale = 1.0 + 0.12 * sin(angle);
+        return Transform.scale(
+          scale: scale,
+          child: ShaderMask(
+            blendMode: BlendMode.srcIn,
+            shaderCallback: (rect) => SweepGradient(
+              transform: GradientRotation(angle),
+              colors: _colors,
+            ).createShader(rect),
+            child: Icon(Icons.auto_awesome, size: widget.size, color: Colors.white),
           ),
         );
       },

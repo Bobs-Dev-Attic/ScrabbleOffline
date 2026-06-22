@@ -763,9 +763,21 @@ class _PaletteEditorDialogState extends State<_PaletteEditorDialog> {
               TextField(
                 controller: _name,
                 maxLength: 24,
+                style: const TextStyle(
+                    color: Color(0xFF22311F), fontWeight: FontWeight.w600),
+                cursorColor: const Color(0xFF22311F),
                 decoration: const InputDecoration(
                   labelText: 'Palette name',
-                  border: OutlineInputBorder(),
+                  labelStyle: TextStyle(color: Color(0xFF3A463E)),
+                  floatingLabelStyle: TextStyle(
+                      color: Color(0xFF22311F), fontWeight: FontWeight.bold),
+                  counterStyle: TextStyle(color: Color(0xFF6B756A)),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF9AA89B)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF22311F), width: 2),
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -792,10 +804,15 @@ class _PaletteEditorDialogState extends State<_PaletteEditorDialog> {
       ),
       actions: [
         TextButton(
+          style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF3A463E)),
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         TextButton(
+          style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              backgroundColor: const Color(0xFF2E7D32)),
           onPressed: () {
             final name = _name.text.trim().isEmpty
                 ? 'My palette'
