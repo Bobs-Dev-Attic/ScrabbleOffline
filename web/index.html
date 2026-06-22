@@ -166,6 +166,25 @@
       return await resp.text();
     };
 
+    // Nuclear "force update": delete every cache, unregister all service
+    // workers, then reload from the network with a cache-busting query. This
+    // always recovers an installed app that is stuck on an old version.
+    window.pwaHardReset = async function () {
+      try {
+        pwaLog('hard reset: clearing caches…');
+        if (window.caches) {
+          var keys = await caches.keys();
+          await Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        }
+        if ('serviceWorker' in navigator) {
+          var regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(function (r) { return r.unregister(); }));
+        }
+      } catch (e) { pwaLog('hard reset error: ' + e); }
+      var base = location.href.split('?')[0].split('#')[0];
+      location.replace(base + '?fresh=' + Date.now());
+    };
+
     // Register the offline caching service worker ourselves. Flutter's loader
     // only refreshes an existing registration (and ships a no-op worker), so a
     // fresh install would otherwise have no offline cache.
@@ -177,13 +196,18 @@
         if (window.__applyingUpdate && !__reloaded) { __reloaded = true; pwaLog('reloading to finish update…'); window.location.reload(); }
       });
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('flutter_service_worker.js').then(function (reg) {
+        // updateViaCache:'none' forces the SW script (and imports) to be fetched
+        // from the network on every update check, so a new deploy is detected
+        // promptly instead of being masked by the HTTP cache.
+        navigator.serviceWorker.register('flutter_service_worker.js', { updateViaCache: 'none' }).then(function (reg) {
           window.__swReg = reg;
           pwaLog('service worker registered.');
           if (reg.waiting && navigator.serviceWorker.controller) { window.__swUpdate = true; pwaLog('a previous update is waiting.'); }
           reg.addEventListener('updatefound', function () {
             __watchInstalling(reg, reg.installing, null);
           });
+          // Proactively check for a new version on every launch.
+          try { reg.update(); } catch (e) {}
         }).catch(function (e) { pwaLog('SW registration failed: ' + e); console.warn('SW registration failed:', e); });
       });
     }

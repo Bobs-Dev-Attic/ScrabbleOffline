@@ -37,6 +37,9 @@ external JSBoolean _isOnline();
 @JS('pwaFetchText')
 external JSPromise<JSString> _fetchText(JSString url);
 
+@JS('pwaHardReset')
+external void _hardReset();
+
 @JS('pwaGetLog')
 external JSString _getLog();
 
@@ -137,6 +140,14 @@ void pwaLog(String msg) {
 void pwaApplyUpdate() {
   try {
     _applyUpdate();
+  } catch (_) {}
+}
+
+/// Force-update escape hatch: clears all caches, unregisters service workers,
+/// and reloads fresh from the network. Recovers an app stuck on an old version.
+void pwaHardReset() {
+  try {
+    _hardReset();
   } catch (_) {}
 }
 

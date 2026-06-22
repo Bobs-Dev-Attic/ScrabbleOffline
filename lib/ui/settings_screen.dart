@@ -227,6 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 20),
               const _SectionTitle('App'),
               _updatesTile(online),
+              _forceUpdateTile(),
               _updateLogTile(),
               const SizedBox(height: 20),
               const _SectionTitle('Privacy & data'),
@@ -531,6 +532,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Widget _forceUpdateTile() {
+    return Card(
+      color: const Color(0x22FFFFFF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: ListTile(
+        leading: const Icon(Icons.cleaning_services, color: Colors.white70),
+        title: const Text('Force update (clear cache)',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        subtitle: const Text(
+            'Clears cached files and reloads the latest version from the '
+            'network. Use this if an update won\'t apply.',
+            style: TextStyle(color: Colors.white70, fontSize: 12)),
+        trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+        onTap: _confirmForceUpdate,
+      ),
+    );
+  }
+
+  Future<void> _confirmForceUpdate() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Force update?'),
+        content: const Text(
+            'This clears the app\'s cached files and reloads the newest version '
+            'from the network. Your saved game and settings are kept.\n\n'
+            'You need to be online.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Force update')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    pwaLog('Settings: force update / cache clear requested.');
+    pwaHardReset(); // clears caches, unregisters SW, reloads fresh
   }
 
   Widget _updateLogTile() {

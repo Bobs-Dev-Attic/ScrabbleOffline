@@ -17,6 +17,20 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.16.0] - 2026-06-22
+
+### Added
+- **Force update (clear cache).** A new Settings → App action clears the app's
+  cached files, unregisters the service worker, and reloads the newest version
+  from the network — a reliable escape hatch when an update won't apply. Saved
+  game and settings are preserved.
+
+### Fixed
+- **More reliable update detection.** The service worker is now registered with
+  `updateViaCache: 'none'` and an update check runs on every launch, so a new
+  deploy is detected promptly instead of being masked by the browser's HTTP
+  cache.
+
 ## [1.15.0] - 2026-06-22
 
 ### Added
