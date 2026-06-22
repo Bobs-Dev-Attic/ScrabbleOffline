@@ -8,7 +8,7 @@
 import 'package:flutter/material.dart';
 
 /// Identifiers for the selectable board themes / modes.
-enum AppThemeId { classic, dark, battery, arcade, highContrast }
+enum AppThemeId { classic, dark, battery, arcade, highContrast, monochrome }
 
 /// A complete visual palette + behavior flags for the game, selected in
 /// Settings. All themes work fully offline.
@@ -114,6 +114,7 @@ class GameTheme {
         AppThemeId.battery => battery,
         AppThemeId.arcade => arcade,
         AppThemeId.highContrast => highContrast,
+        AppThemeId.monochrome => monochrome,
       };
 
   static const classic = GameTheme(
@@ -266,7 +267,39 @@ class GameTheme {
     richDecoration: false,
   );
 
-  static const all = [classic, dark, battery, arcade, highContrast];
+  static const monochrome = GameTheme(
+    id: AppThemeId.monochrome,
+    label: 'Monochrome',
+    description: 'Elegant grayscale — no color, premiums shown by shade.',
+    icon: Icons.filter_b_and_w,
+    brightness: Brightness.dark,
+    seed: Color(0xFF9E9E9E),
+    scaffold: Color(0xFF161616),
+    appBar: Color(0xFF1E1E1E),
+    panel: Color(0xFF242424),
+    boardFrame: Color(0xFF2C2C2C),
+    cellStandard: Color(0xFF2A2A2A),
+    // Premium squares are distinguished by lightness rather than hue: word
+    // multipliers (DW/TW) are lighter and more prominent than letter ones.
+    cellDL: Color(0xFF3A3A3A),
+    cellTL: Color(0xFF4C4C4C),
+    cellDW: Color(0xFF626262),
+    cellTW: Color(0xFF7C7C7C),
+    cellCenter: Color(0xFF626262),
+    premiumText: Color(0xFFECECEC),
+    hover: Color(0x80FFFFFF),
+    tileGradient: [Color(0xFFEDEDED), Color(0xFFC9C9C9)],
+    tileBorder: Color(0xFF8A8A8A),
+    tileText: Color(0xFF1A1A1A),
+    tileValueText: Color(0xFF4A4A4A),
+    rack: Color(0xFF2A2A2A),
+    accent: Color(0xFFE0E0E0),
+    animated: true,
+    flashy: false,
+    richDecoration: true,
+  );
+
+  static const all = [classic, dark, battery, arcade, highContrast, monochrome];
 }
 
 /// Provides the active [GameTheme] to the widget subtree.

@@ -17,6 +17,14 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.8.0] - 2026-06-22
+
+### Added
+- **Monochrome board theme.** An elegant dark grayscale option (Settings →
+  Theme) with no color hues — premium squares are distinguished by shade
+  (lighter for word multipliers, darker for letter multipliers) and tiles are
+  rendered as light stone-gray.
+
 ## [1.7.1] - 2026-06-22
 
 ### Added
