@@ -182,6 +182,43 @@ void main() {
     });
   });
 
+  group('ghost fade', () {
+    test('placing a tile starts the ghost fade but keeps ghosts initially', () {
+      final dict = Dictionary()
+        ..loadWords(File('assets/dictionary.txt').readAsLinesSync());
+      final game = _game(dict);
+      game.newGame();
+      game.currentPlayer.rack
+        ..clear()
+        ..addAll(const [
+          Tile(letter: 'C', value: 3),
+          Tile(letter: 'A', value: 1),
+          Tile(letter: 'R', value: 1),
+          Tile(letter: 'E', value: 1),
+          Tile(letter: 'S', value: 1),
+          Tile(letter: 'T', value: 1),
+          Tile(letter: 'O', value: 1),
+        ]);
+      game.currentPlayer.rackIds
+        ..clear()
+        ..addAll(List.generate(7, (i) => 3000 + i));
+
+      game.suggest();
+      expect(game.ghosts, isNotEmpty);
+      expect(game.ghostsFading, isFalse);
+
+      game.placeTile(0, 0, 0);
+      // Fade started, ghosts still present (they animate out, then clear).
+      expect(game.ghostsFading, isTrue);
+      expect(game.ghosts, isNotEmpty);
+
+      // Recalling cancels the fade and clears ghosts immediately.
+      game.recallAll();
+      expect(game.ghostsFading, isFalse);
+      expect(game.ghosts, isEmpty);
+    });
+  });
+
   group('movePending', () {
     test('relocates a pending tile to another empty cell', () {
       final game = _game(Dictionary()..loadWords(['CAT']));
