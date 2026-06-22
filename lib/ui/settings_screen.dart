@@ -4,6 +4,8 @@
 //
 // See docs/DESIGN.md for how this fits the overall architecture.
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import '../app_info.dart';
@@ -27,25 +29,113 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _busy = false;
   bool _checkingUpdate = false;
   String? _updateMsg;
+  String? _availableVersion;
   bool _updatingDict = false;
   String? _dictMsg;
 
   SettingsController get settings => widget.settings;
 
+  /// Reliable, informative update check:
+  /// 1. fetch the server's version.json fresh to learn the available version;
+  /// 2. ask the service worker to check + download a new version, awaiting the
+  ///    real result (no fixed-delay guessing — fixes the "run it twice" issue);
+  /// 3. report current vs. available version and what to do next.
   Future<void> _checkUpdates() async {
     setState(() {
       _checkingUpdate = true;
-      _updateMsg = 'Checking…';
+      _availableVersion = null;
+      _updateMsg = 'Contacting server…';
     });
-    pwaCheckForUpdate();
-    await Future.delayed(const Duration(seconds: 3));
+    pwaLog('Settings: Check for updates tapped (current v$kAppVersion build $kAppBuild).');
+
+    // 1. What version is on the server right now?
+    String? serverVer;
+    int? serverBuild;
+    final raw = await pwaFetchText('version.json');
+    if (raw != null) {
+      try {
+        final m = jsonDecode(raw) as Map<String, dynamic>;
+        serverVer = m['version']?.toString();
+        serverBuild = int.tryParse('${m['build_number']}');
+        pwaLog('server version.json: v$serverVer build $serverBuild');
+      } catch (e) {
+        pwaLog('version.json parse error: $e');
+      }
+    } else {
+      pwaLog('version.json fetch failed (offline?).');
+    }
+    if (mounted) {
+      setState(() {
+        _availableVersion =
+            serverVer != null ? 'v$serverVer (build ${serverBuild ?? '?'})' : null;
+        _updateMsg = 'Checking for a new app version…';
+      });
+    }
+
+    // 2. Ask the service worker to check and download any new version.
+    final status = await pwaCheckForUpdate();
     if (!mounted) return;
+
+    // 3. Build a clear message.
+    final newerByVersion = serverBuild != null && serverBuild > kAppBuild;
+    String msg;
+    if (status == 'updated') {
+      msg = 'Update ready'
+          '${serverVer != null ? ': v$serverVer (build $serverBuild)' : ''}.'
+          '\nTap “Update now” to install and reload.';
+    } else if (newerByVersion) {
+      msg = 'A new version is available'
+          '${serverVer != null ? ': v$serverVer (build $serverBuild)' : ''}.'
+          '\nStill downloading — tap Check again in a moment.';
+    } else if (status == 'latest') {
+      msg = "You're on the latest version (v$kAppVersion, build $kAppBuild).";
+    } else if (status == 'unsupported') {
+      msg = 'Updates aren\'t available in this browser context.';
+    } else {
+      msg = 'Couldn\'t complete the check (are you online?).';
+    }
+    pwaLog('Settings: check finished — status=$status, newerByVersion=$newerByVersion.');
     setState(() {
       _checkingUpdate = false;
-      _updateMsg = pwaUpdateAvailable()
-          ? 'Update available.'
-          : "You're on the latest version.";
+      _updateMsg = msg;
     });
+  }
+
+  void _showUpdateLog() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final log = pwaGetLog();
+        return AlertDialog(
+          title: const Text('Update log'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: SelectableText(
+                log.isEmpty ? 'No update events recorded yet.' : log,
+                style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    color: Color(0xFF3A463E)),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                pwaClearLog();
+                Navigator.pop(ctx);
+              },
+              child: const Text('Clear'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _updateDictionary() async {
@@ -53,6 +143,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _updatingDict = true;
       _dictMsg = 'Updating…';
     });
+    pwaLog('Settings: Update word list tapped.');
     final dict = widget.game.dictionary;
     final raw = await pwaFetchText('assets/assets/dictionary.txt');
     if (raw != null && mounted) {
@@ -61,11 +152,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final ext = await pwaFetchText('assets/assets/dictionary_extended.txt');
         if (ext != null) dict.refreshExtendedFromRaw(ext);
       }
+      pwaLog('Settings: word list updated — $n words.');
       setState(() {
         _updatingDict = false;
         _dictMsg = 'Updated — $n words loaded.';
       });
     } else if (mounted) {
+      pwaLog('Settings: word list update failed (offline?).');
       setState(() {
         _updatingDict = false;
         _dictMsg = 'Could not update (are you online?).';
@@ -111,6 +204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 20),
               const _SectionTitle('App'),
               _updatesTile(online),
+              _updateLogTile(),
             ],
           );
         },
@@ -222,10 +316,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 const Icon(Icons.info_outline, color: Colors.white70),
                 const SizedBox(width: 12),
-                const Expanded(
-                  child: Text('Version v$kAppVersion',
-                      style: TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Current version',
+                          style: TextStyle(color: Colors.white54, fontSize: 11)),
+                      const Text('v$kAppVersion (build $kAppBuild)',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
+                      if (_availableVersion != null &&
+                          _availableVersion != 'v$kAppVersion (build $kAppBuild)')
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text('Available: $_availableVersion',
+                              style: TextStyle(
+                                  color: Colors.amber.shade300,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                    ],
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: (online && !_checkingUpdate) ? _checkUpdates : null,
@@ -236,15 +348,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child:
                               CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Check for updates'),
+                      : const Text('Check'),
                 ),
               ],
             ),
-            if (_updateMsg != null)
+            if (_checkingUpdate || _updateMsg != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8, left: 36),
-                child: Text(_updateMsg!,
-                    style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_checkingUpdate) ...[
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
+                      child: Text(_updateMsg ?? '',
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 13)),
+                    ),
+                  ],
+                ),
               ),
             if (!online)
               const Padding(
@@ -268,6 +396,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _updateLogTile() {
+    return Card(
+      color: const Color(0x22FFFFFF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: ListTile(
+        leading: const Icon(Icons.receipt_long, color: Colors.white70),
+        title: const Text('Update log',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        subtitle: const Text('Recent install / update events for debugging.',
+            style: TextStyle(color: Colors.white70, fontSize: 12)),
+        trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+        onTap: _showUpdateLog,
       ),
     );
   }

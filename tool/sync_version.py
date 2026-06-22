@@ -54,6 +54,11 @@ def apply(app_info, pubspec, version, build):
         "kAppVersion = '{}'".format(version),
         app_info,
     )
+    new_app_info = re.sub(
+        r"kAppBuild\s*=\s*\d+",
+        "kAppBuild = {}".format(build),
+        new_app_info,
+    )
     new_pubspec = re.sub(
         r"(?m)^version:\s*.*$",
         "version: {}+{}".format(version, build),

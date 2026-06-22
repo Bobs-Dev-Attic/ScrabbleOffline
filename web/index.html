@@ -63,6 +63,19 @@
       return (choice && choice.outcome) ? choice.outcome : 'dismissed';
     };
 
+    // ---- Update log (for debugging, surfaced in Settings) ----
+    window.__pwaLog = [];
+    window.pwaLog = function (msg) {
+      try {
+        var line = new Date().toISOString().substr(11, 12) + '  ' + msg;
+        window.__pwaLog.push(line);
+        if (window.__pwaLog.length > 200) window.__pwaLog.shift();
+        if (window.console && console.debug) console.debug('[pwa] ' + msg);
+      } catch (e) {}
+    };
+    window.pwaGetLog = function () { return window.__pwaLog.join('\n'); };
+    window.pwaClearLog = function () { window.__pwaLog = []; };
+
     // ---- Offline cache state + update detection ----
     window.pwaIsOnline = function () { return navigator.onLine !== false; };
     // Controlled by the SW => the app shell + assets are cached for offline use.
@@ -71,12 +84,78 @@
     window.__swUpdate = false;
     window.__applyingUpdate = false;
     window.pwaUpdateAvailable = function () { return window.__swUpdate === true; };
+
+    // Watch a newly-installing worker and resolve true once it is installed and
+    // waiting (i.e. an update is downloaded and ready to apply).
+    function __watchInstalling(reg, nw, resolve) {
+      if (!nw) return;
+      pwaLog('update found — downloading new version…');
+      nw.addEventListener('statechange', function () {
+        pwaLog('new worker state: ' + nw.state);
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          window.__swUpdate = true;
+          pwaLog('update ready to apply.');
+          if (resolve) { var r = resolve; resolve = null; r('updated'); }
+        } else if (nw.state === 'redundant') {
+          if (resolve) { var r2 = resolve; resolve = null; r2('latest'); }
+        }
+      });
+    }
+
+    // Reliable, awaitable update check. Resolves to 'updated', 'latest',
+    // 'error', or 'unsupported'. Waits for the new worker to finish installing
+    // (precaching) instead of guessing with a fixed delay.
     window.pwaCheckForUpdate = function () {
-      try { if (window.__swReg) window.__swReg.update(); } catch (e) {}
+      var reg = window.__swReg;
+      if (!('serviceWorker' in navigator) || !reg) {
+        pwaLog('check skipped — no service worker registration.');
+        return Promise.resolve('unsupported');
+      }
+      if (reg.waiting && navigator.serviceWorker.controller) {
+        window.__swUpdate = true;
+        pwaLog('check: an update was already waiting.');
+        return Promise.resolve('updated');
+      }
+      pwaLog('checking server for a new version…');
+      return new Promise(function (resolve) {
+        var settled = false;
+        var done = function (v) {
+          if (settled) return; settled = true;
+          pwaLog('check result: ' + v);
+          resolve(v);
+        };
+        try {
+          reg.addEventListener('updatefound', function () {
+            __watchInstalling(reg, reg.installing, done);
+          });
+          reg.update().then(function () {
+            // If nothing is installing/waiting shortly after update(), we are
+            // already on the latest version.
+            if (reg.waiting && navigator.serviceWorker.controller) {
+              window.__swUpdate = true; return done('updated');
+            }
+            if (reg.installing) { __watchInstalling(reg, reg.installing, done); }
+            setTimeout(function () {
+              if (!reg.installing && !reg.waiting) done('latest');
+            }, 2000);
+          }).catch(function (e) {
+            pwaLog('update() failed: ' + e);
+            done('error');
+          });
+        } catch (e) { pwaLog('check error: ' + e); done('error'); }
+        // Safety net: never hang the UI longer than 30s.
+        setTimeout(function () { done(window.__swUpdate ? 'updated' : 'latest'); }, 30000);
+      });
     };
     window.pwaApplyUpdate = function () {
       var r = window.__swReg;
-      if (r && r.waiting) { window.__applyingUpdate = true; r.waiting.postMessage('SKIP_WAITING'); }
+      if (r && r.waiting) {
+        window.__applyingUpdate = true;
+        pwaLog('applying update (activating new worker)…');
+        r.waiting.postMessage('SKIP_WAITING');
+      } else {
+        pwaLog('apply requested but no waiting worker.');
+      }
     };
     // Fetch text fresh from the network (bypassing caches). The "?fresh"
     // param tells the service worker to go network-first for this request.
@@ -93,23 +172,19 @@
     if ('serviceWorker' in navigator) {
       var __reloaded = false;
       navigator.serviceWorker.addEventListener('controllerchange', function () {
+        pwaLog('controller changed (new worker active).');
         // Only reload when the user explicitly applied an update.
-        if (window.__applyingUpdate && !__reloaded) { __reloaded = true; window.location.reload(); }
+        if (window.__applyingUpdate && !__reloaded) { __reloaded = true; pwaLog('reloading to finish update…'); window.location.reload(); }
       });
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('flutter_service_worker.js').then(function (reg) {
           window.__swReg = reg;
-          if (reg.waiting && navigator.serviceWorker.controller) window.__swUpdate = true;
+          pwaLog('service worker registered.');
+          if (reg.waiting && navigator.serviceWorker.controller) { window.__swUpdate = true; pwaLog('a previous update is waiting.'); }
           reg.addEventListener('updatefound', function () {
-            var nw = reg.installing;
-            if (!nw) return;
-            nw.addEventListener('statechange', function () {
-              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-                window.__swUpdate = true;
-              }
-            });
+            __watchInstalling(reg, reg.installing, null);
           });
-        }).catch(function (e) { console.warn('SW registration failed:', e); });
+        }).catch(function (e) { pwaLog('SW registration failed: ' + e); console.warn('SW registration failed:', e); });
       });
     }
   </script>
