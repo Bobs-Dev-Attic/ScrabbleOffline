@@ -17,6 +17,13 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.18.0] - 2026-06-22
+
+### Added
+- **Invalid-move feedback.** When you press Play on an invalid word, the
+  pending tiles on the board shake to signal the move was rejected (they stay
+  put so you can fix them), alongside the existing status message.
+
 ## [1.17.0] - 2026-06-22
 
 ### Changed

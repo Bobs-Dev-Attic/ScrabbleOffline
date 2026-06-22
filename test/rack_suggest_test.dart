@@ -75,6 +75,28 @@ void main() {
     });
   });
 
+  group('invalid move feedback', () {
+    test('a rejected move bumps invalidSerial (drives the board shake)', () {
+      final game = _game(Dictionary()..loadWords(['CAT']));
+      game.newGame();
+      game.currentPlayer.rack
+        ..clear()
+        ..addAll(const [
+          Tile(letter: 'X', value: 8),
+          Tile(letter: 'Z', value: 10),
+        ]);
+      game.placeTile(0, 7, 7);
+      game.placeTile(1, 7, 8); // spells "XZ" across the center — not a word
+      expect(game.invalidSerial, 0);
+
+      final result = game.commitTurn();
+      expect(result.valid, isFalse);
+      expect(game.invalidSerial, 1, reason: 'shake trigger should advance');
+      // Tiles stay pending so the player can fix them.
+      expect(game.pending, isNotEmpty);
+    });
+  });
+
   group('mixRack', () {
     test('preserves the tiles and ids, and is a no-op while placing', () {
       final game = _game(Dictionary()..loadWords(['CAT']));

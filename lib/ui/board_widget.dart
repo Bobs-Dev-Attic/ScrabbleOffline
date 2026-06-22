@@ -5,6 +5,8 @@
 //
 // See docs/DESIGN.md for how this fits the overall architecture.
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../models/board.dart';
@@ -110,20 +112,24 @@ class BoardWidget extends StatelessWidget {
           : tileWidget;
     } else if (pending != null) {
       // Pending tiles can be dragged to another cell to adjust placement, or
-      // tapped to recall them to the rack.
-      content = Draggable<BoardDragData>(
-        data: BoardDragData(row, col),
-        feedback: Material(
-          color: Colors.transparent,
-          child: GameThemeScope(
-            theme: theme,
-            child: TileWidget(tile: pending, size: size * 1.12, highlighted: true),
+      // tapped to recall them to the rack. They shake when a move is rejected.
+      content = _ShakeOnInvalid(
+        trigger: game.invalidSerial,
+        child: Draggable<BoardDragData>(
+          data: BoardDragData(row, col),
+          feedback: Material(
+            color: Colors.transparent,
+            child: GameThemeScope(
+              theme: theme,
+              child:
+                  TileWidget(tile: pending, size: size * 1.12, highlighted: true),
+            ),
           ),
-        ),
-        childWhenDragging: _premiumLabel(theme, cellType, size),
-        child: GestureDetector(
-          onTap: () => onRecall(row, col),
-          child: TileWidget(tile: pending, size: size, highlighted: true),
+          childWhenDragging: _premiumLabel(theme, cellType, size),
+          child: GestureDetector(
+            onTap: () => onRecall(row, col),
+            child: TileWidget(tile: pending, size: size, highlighted: true),
+          ),
         ),
       );
     } else {
@@ -287,6 +293,54 @@ class _DropInTile extends StatelessWidget {
         );
       },
       child: child,
+    );
+  }
+}
+
+/// Briefly shakes its child horizontally whenever [trigger] increases — used to
+/// signal that a played move was rejected (e.g. an invalid word).
+class _ShakeOnInvalid extends StatefulWidget {
+  final int trigger;
+  final Widget child;
+
+  const _ShakeOnInvalid({required this.trigger, required this.child});
+
+  @override
+  State<_ShakeOnInvalid> createState() => _ShakeOnInvalidState();
+}
+
+class _ShakeOnInvalidState extends State<_ShakeOnInvalid>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 480),
+  );
+
+  @override
+  void didUpdateWidget(_ShakeOnInvalid old) {
+    super.didUpdateWidget(old);
+    if (widget.trigger != old.trigger && widget.trigger > 0) {
+      _c.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, child) {
+        if (_c.value == 0) return child!;
+        // Damped horizontal oscillation: several quick swings that fade out.
+        final dx = sin(_c.value * pi * 6) * 6 * (1 - _c.value);
+        return Transform.translate(offset: Offset(dx, 0), child: child);
+      },
+      child: widget.child,
     );
   }
 }

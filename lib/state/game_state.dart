@@ -97,6 +97,10 @@ class GameState extends ChangeNotifier {
   Map<String, int> lastPlacedOrder = {};
   int moveSerial = 0;
 
+  /// Bumped when an attempted move is rejected (e.g. an invalid word), so the
+  /// board can shake the pending tiles to signal the rejection.
+  int invalidSerial = 0;
+
   /// Bumped each time the player asks for a suggestion; [suggestedIds] holds the
   /// rack tile ids that spell the suggested word, so the rack can highlight and
   /// enlarge them as they slide into place.
@@ -511,6 +515,7 @@ class GameState extends ChangeNotifier {
     final result = referee.evaluate(board, placements);
     if (!result.valid) {
       statusMessage = result.error ?? 'Invalid move.';
+      invalidSerial++;
       notifyListeners();
       return result;
     }
