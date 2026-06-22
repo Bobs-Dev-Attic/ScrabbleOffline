@@ -49,7 +49,7 @@ class _GameScreenState extends State<GameScreen> {
     return Scaffold(
       backgroundColor: theme.scaffold,
       appBar: AppBar(
-        title: const Text('Scrabble Offline'),
+        title: const Text('Scrabbled Offline'),
         backgroundColor: theme.appBar,
         foregroundColor: Colors.white,
         actions: [

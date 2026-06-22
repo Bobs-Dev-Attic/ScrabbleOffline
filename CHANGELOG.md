@@ -17,6 +17,12 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.11.1] - 2026-06-22
+
+### Fixed
+- The in-game screen's title bar still read "Scrabble Offline" after the
+  rename; it now shows "Scrabbled Offline" like the rest of the app.
+
 ## [1.11.0] - 2026-06-22
 
 ### Changed
