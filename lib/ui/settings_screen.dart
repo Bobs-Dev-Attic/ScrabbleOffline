@@ -216,6 +216,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               const _SectionTitle('Board theme'),
               for (final t in GameTheme.all) _themeTile(t),
+              const SizedBox(height: 16),
+              const _SectionTitle('Custom palettes'),
+              for (final p in settings.customPalettes) _customPaletteTile(p),
+              _newPaletteTile(),
               const SizedBox(height: 20),
               const _SectionTitle('Dictionary'),
               _permissiveTile(),
@@ -236,7 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _themeTile(GameTheme t) {
-    final selected = settings.themeId == t.id;
+    final selected = settings.isBuiltinActive(t.id);
     return Card(
       color: const Color(0x22FFFFFF),
       shape: RoundedRectangleBorder(
@@ -247,7 +251,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       child: ListTile(
-        onTap: () => settings.setTheme(t.id),
+        onTap: () => settings.setBuiltinTheme(t.id),
         leading: _swatch(t),
         title: Text(t.label,
             style: const TextStyle(
@@ -293,6 +297,111 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  /// A selectable saved custom palette, with edit/delete controls.
+  Widget _customPaletteTile(CustomPalette p) {
+    final theme = p.toTheme();
+    final selected = settings.activeCustomId == p.id;
+    return Card(
+      color: const Color(0x22FFFFFF),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(
+          color: selected ? Colors.amberAccent : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      child: ListTile(
+        onTap: () => settings.selectCustomPalette(p.id),
+        leading: _swatch(theme),
+        title: Text(p.name,
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
+        subtitle: const Text('Custom palette',
+            style: TextStyle(color: Colors.white70, fontSize: 12)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected)
+              const Padding(
+                padding: EdgeInsets.only(right: 4),
+                child: Icon(Icons.check_circle, color: Colors.amberAccent),
+              ),
+            IconButton(
+              tooltip: 'Edit',
+              icon: const Icon(Icons.edit, color: Colors.white54),
+              onPressed: () => _openPaletteEditor(existing: p),
+            ),
+            IconButton(
+              tooltip: 'Delete',
+              icon: const Icon(Icons.delete_outline, color: Colors.white54),
+              onPressed: () => _confirmDeletePalette(p),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _newPaletteTile() {
+    final atMax =
+        settings.customPalettes.length >= SettingsController.maxCustomPalettes;
+    return Card(
+      color: const Color(0x14FFFFFF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: ListTile(
+        enabled: !atMax,
+        onTap: atMax ? null : () => _openPaletteEditor(),
+        leading: Icon(Icons.add_circle_outline,
+            color: atMax ? Colors.white30 : Colors.amberAccent),
+        title: Text(atMax ? 'Palette limit reached' : 'New custom palette',
+            style: TextStyle(
+                color: atMax ? Colors.white38 : Colors.white,
+                fontWeight: FontWeight.bold)),
+        subtitle: Text(
+            'Saved ${settings.customPalettes.length} / '
+            '${SettingsController.maxCustomPalettes}',
+            style: const TextStyle(color: Colors.white54, fontSize: 12)),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeletePalette(CustomPalette p) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "${p.name}"?'),
+        content: const Text('This custom palette will be removed.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (ok == true) await settings.deleteCustomPalette(p.id);
+  }
+
+  Future<void> _openPaletteEditor({CustomPalette? existing}) async {
+    final result = await showDialog<CustomPalette>(
+      context: context,
+      builder: (ctx) => _PaletteEditorDialog(existing: existing),
+    );
+    if (result == null) return;
+    final saved = await settings.saveCustomPalette(result);
+    if (!mounted) return;
+    if (!saved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You already have 5 custom palettes.')),
+      );
+    } else {
+      // Selecting it immediately makes the preview the live theme.
+      settings.selectCustomPalette(result.id);
+    }
   }
 
   Widget _updateDictionaryTile(bool online) {
@@ -559,6 +668,185 @@ class _SectionTitle extends StatelessWidget {
           fontWeight: FontWeight.bold,
           letterSpacing: 1.2,
         ),
+      ),
+    );
+  }
+}
+
+/// A fixed set of pleasant primary colors to seed custom palettes from.
+const List<Color> _seedSwatches = [
+  Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF00695C), Color(0xFF00838F),
+  Color(0xFF1565C0), Color(0xFF283593), Color(0xFF4527A0), Color(0xFF6A1B9A),
+  Color(0xFFAD1457), Color(0xFFC62828), Color(0xFFD84315), Color(0xFFEF6C00),
+  Color(0xFFF9A825), Color(0xFF9E9D24), Color(0xFF558B2F), Color(0xFF37474F),
+  Color(0xFF4E342E), Color(0xFF455A64),
+];
+
+/// Dialog to create or edit a custom palette: name it, pick a primary color
+/// from a fixed set, and preview the generated board palette live.
+class _PaletteEditorDialog extends StatefulWidget {
+  final CustomPalette? existing;
+  const _PaletteEditorDialog({this.existing});
+
+  @override
+  State<_PaletteEditorDialog> createState() => _PaletteEditorDialogState();
+}
+
+class _PaletteEditorDialogState extends State<_PaletteEditorDialog> {
+  late final TextEditingController _name =
+      TextEditingController(text: widget.existing?.name ?? 'My palette');
+  late int _seed = widget.existing?.seed ?? _seedSwatches.first.toARGB32();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  GameTheme get _preview =>
+      GameTheme.fromSeed(customId: 'preview', label: 'Preview', seedArgb: _seed);
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.existing == null ? 'New palette' : 'Edit palette'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _name,
+                maxLength: 24,
+                decoration: const InputDecoration(
+                  labelText: 'Palette name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text('Primary color',
+                  style: TextStyle(
+                      color: Color(0xFF3A463E), fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final c in _seedSwatches) _swatchDot(c),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text('Preview',
+                  style: TextStyle(
+                      color: Color(0xFF3A463E), fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              _PalettePreview(theme: _preview),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            final name = _name.text.trim().isEmpty
+                ? 'My palette'
+                : _name.text.trim();
+            final id = widget.existing?.id ??
+                DateTime.now().microsecondsSinceEpoch.toString();
+            Navigator.pop(
+                context, CustomPalette(id: id, name: name, seed: _seed));
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+
+  Widget _swatchDot(Color c) {
+    final selected = c.toARGB32() == _seed;
+    return GestureDetector(
+      onTap: () => setState(() => _seed = c.toARGB32()),
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: c,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? const Color(0xFF22311F) : Colors.black26,
+            width: selected ? 3 : 1,
+          ),
+          boxShadow: const [
+            BoxShadow(color: Color(0x33000000), blurRadius: 3, offset: Offset(0, 1)),
+          ],
+        ),
+        child: selected
+            ? const Icon(Icons.check, color: Colors.white, size: 18)
+            : null,
+      ),
+    );
+  }
+}
+
+/// A compact board+tile preview rendered from a generated [GameTheme].
+class _PalettePreview extends StatelessWidget {
+  final GameTheme theme;
+  const _PalettePreview({required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    final cells = [
+      theme.cellTW,
+      theme.cellDW,
+      theme.cellTL,
+      theme.cellDL,
+      theme.cellStandard,
+    ];
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: theme.boardFrame,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          for (final c in cells)
+            Container(
+              width: 26,
+              height: 26,
+              margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(
+                color: c,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          // A sample tile.
+          Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [theme.tileGradient.first, theme.tileGradient.last],
+              ),
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: theme.tileBorder),
+            ),
+            child: Text('A',
+                style: TextStyle(
+                    color: theme.tileText,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16)),
+          ),
+        ],
       ),
     );
   }

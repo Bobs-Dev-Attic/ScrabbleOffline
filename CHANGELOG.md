@@ -17,6 +17,15 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.14.0] - 2026-06-22
+
+### Added
+- **Custom palettes.** A new Settings → *Custom palettes* section lets you pick
+  a primary color from a fixed swatch set; the app generates a full, cohesive
+  board palette (premium squares, tiles, accents) from it, with a live preview.
+  Save up to 5 named palettes, select one as the active theme, and edit or
+  delete them anytime. Palettes persist locally.
+
 ## [1.13.0] - 2026-06-22
 
 ### Changed

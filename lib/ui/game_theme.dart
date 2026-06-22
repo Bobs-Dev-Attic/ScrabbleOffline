@@ -7,13 +7,22 @@
 
 import 'package:flutter/material.dart';
 
-/// Identifiers for the selectable board themes / modes.
-enum AppThemeId { classic, dark, battery, arcade, highContrast, monochrome }
+/// Identifiers for the selectable board themes / modes. [custom] covers
+/// user-generated palettes (distinguished further by [GameTheme.customKey]).
+enum AppThemeId { classic, dark, battery, arcade, highContrast, monochrome, custom }
 
 /// A complete visual palette + behavior flags for the game, selected in
 /// Settings. All themes work fully offline.
 class GameTheme {
   final AppThemeId id;
+
+  /// Distinguishes saved custom palettes and changes when a custom palette's
+  /// seed color changes (so the UI rebuilds on edit). Null for built-in themes.
+  final String? customKey;
+
+  /// Stable identity used for theme-change detection (see [GameThemeScope]).
+  String get key => customKey ?? id.name;
+
   final String label;
   final String description;
   final IconData icon;
@@ -55,6 +64,7 @@ class GameTheme {
 
   const GameTheme({
     required this.id,
+    this.customKey,
     required this.label,
     required this.description,
     required this.icon,
@@ -115,7 +125,56 @@ class GameTheme {
         AppThemeId.arcade => arcade,
         AppThemeId.highContrast => highContrast,
         AppThemeId.monochrome => monochrome,
+        AppThemeId.custom => classic, // resolved via fromSeed, not forId
       };
+
+  /// Builds a complete, cohesive dark palette from a single primary [seedArgb]
+  /// color (ARGB int). Premium squares are derived by hue/lightness shifts so
+  /// they stay distinguishable while harmonizing with the chosen color.
+  factory GameTheme.fromSeed({
+    required String customId,
+    required String label,
+    required int seedArgb,
+  }) {
+    final seed = Color(seedArgb);
+    final h = HSLColor.fromColor(seed).hue;
+    Color hsl(double hue, double s, double l) => HSLColor.fromAHSL(
+          1,
+          (hue % 360 + 360) % 360,
+          s.clamp(0.0, 1.0),
+          l.clamp(0.0, 1.0),
+        ).toColor();
+    return GameTheme(
+      id: AppThemeId.custom,
+      customKey: 'custom:$customId:$seedArgb',
+      label: label,
+      description: 'Your custom palette.',
+      icon: Icons.palette,
+      brightness: Brightness.dark,
+      seed: seed,
+      scaffold: hsl(h, 0.18, 0.12),
+      appBar: hsl(h, 0.45, 0.22),
+      panel: hsl(h, 0.16, 0.20),
+      boardFrame: hsl(h, 0.50, 0.20),
+      cellStandard: hsl(h, 0.28, 0.34),
+      cellDL: hsl(h + 25, 0.45, 0.56),
+      cellTL: hsl(h + 25, 0.55, 0.40),
+      cellDW: hsl(h + 180, 0.50, 0.62),
+      cellTW: hsl(h + 180, 0.62, 0.48),
+      cellCenter: hsl(h + 180, 0.50, 0.62),
+      premiumText: Colors.white,
+      hover: seed.withValues(alpha: 0.5),
+      tileGradient: [hsl(h, 0.40, 0.90), hsl(h, 0.45, 0.80)],
+      tileBorder: hsl(h, 0.45, 0.55),
+      tileText: hsl(h, 0.65, 0.18),
+      tileValueText: hsl(h, 0.50, 0.32),
+      rack: hsl(h, 0.32, 0.22),
+      accent: hsl(h, 0.85, 0.62),
+      animated: true,
+      flashy: false,
+      richDecoration: true,
+    );
+  }
 
   static const classic = GameTheme(
     id: AppThemeId.classic,
@@ -319,5 +378,6 @@ class GameThemeScope extends InheritedWidget {
   }
 
   @override
-  bool updateShouldNotify(GameThemeScope oldWidget) => theme.id != oldWidget.theme.id;
+  bool updateShouldNotify(GameThemeScope oldWidget) =>
+      theme.key != oldWidget.theme.key;
 }
