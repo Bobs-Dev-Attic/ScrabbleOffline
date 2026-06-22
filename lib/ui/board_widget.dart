@@ -100,11 +100,13 @@ class BoardWidget extends StatelessWidget {
       );
     } else {
       // Ghost tile: a translucent hint showing where the current Suggest
-      // result would be placed.
+      // result would be placed. Once the player starts placing, it fades out.
       final ghost = game.ghostAt(row, col);
       content = ghost != null
-          ? Opacity(
-              opacity: 0.45,
+          ? AnimatedOpacity(
+              opacity: game.ghostsFading ? 0.0 : 0.45,
+              duration: Duration(milliseconds: game.ghostsFading ? 5500 : 0),
+              curve: Curves.easeOut,
               child: TileWidget(tile: ghost, size: size, highlighted: true),
             )
           : _premiumLabel(theme, cellType, size);

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../engine/ai_player.dart';
@@ -73,6 +75,17 @@ class GameState extends ChangeNotifier {
   Map<String, Tile> ghosts = {};
   Tile? ghostAt(int row, int col) => ghosts['$row,$col'];
 
+  /// True once the player starts placing tiles: the ghosts fade out (the board
+  /// animates their opacity to 0) before being cleared.
+  bool ghostsFading = false;
+  Timer? _ghostFadeTimer;
+
+  void _cancelGhostFade() {
+    _ghostFadeTimer?.cancel();
+    _ghostFadeTimer = null;
+    ghostsFading = false;
+  }
+
   /// Cycle of suggested moves; pressing Suggest repeatedly advances through
   /// them (different words and positions). Regenerated when the rack/turn/board
   /// changes.
@@ -131,6 +144,7 @@ class GameState extends ChangeNotifier {
     lastPlaced = {};
     lastPlacedOrder = {};
     suggestedIds = {};
+    _cancelGhostFade();
     ghosts = {};
     _suggestionCycle = [];
     _suggestionSignature = '';
@@ -156,6 +170,7 @@ class GameState extends ChangeNotifier {
     lastPlaced = {};
     lastPlacedOrder = {};
     suggestedIds = {};
+    _cancelGhostFade();
     ghosts = {};
     _suggestionCycle = [];
     _suggestionSignature = '';
@@ -193,6 +208,16 @@ class GameState extends ChangeNotifier {
     final placed = tile ?? currentPlayer.rack[rackIndex];
     pending['$row,$col'] = PendingPlacement(row, col, placed, rackIndex);
     statusMessage = '';
+    // Once the player starts placing, fade the suggestion ghosts out.
+    if (ghosts.isNotEmpty && !ghostsFading) {
+      ghostsFading = true;
+      _ghostFadeTimer?.cancel();
+      _ghostFadeTimer = Timer(const Duration(milliseconds: 5500), () {
+        ghosts = {};
+        ghostsFading = false;
+        notifyListeners();
+      });
+    }
     notifyListeners();
     return true;
   }
@@ -220,6 +245,7 @@ class GameState extends ChangeNotifier {
   /// Recalls all pending tiles — the full rollback routine.
   void recallAll() {
     pending.clear();
+    _cancelGhostFade();
     ghosts = {};
     statusMessage = '';
     notifyListeners();
@@ -336,6 +362,7 @@ class GameState extends ChangeNotifier {
       ..addAll(newIds);
 
     // Ghost tiles show exactly where this suggestion would be placed.
+    _cancelGhostFade();
     ghosts = {
       for (final p in best.placements) '${p.row},${p.col}': p.tile,
     };
@@ -416,6 +443,7 @@ class GameState extends ChangeNotifier {
         '${result.isBingo ? ' — BINGO! +$kBingoBonus' : ''} • $summary';
 
     pending.clear();
+    _cancelGhostFade();
     ghosts = {};
     consecutivePasses = 0;
 
