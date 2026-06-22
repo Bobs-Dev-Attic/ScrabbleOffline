@@ -319,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Offline • ${game.dictionary.wordCount} words'
+              'Offline • ${_grouped(game.dictionary.wordCount)} words'
               '${settings.permissiveDictionary ? ' + expanded' : ''}',
               style: const TextStyle(color: Colors.white70),
             ),
@@ -412,7 +412,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return _chip(
         icon: Icons.system_update_alt,
         label: 'Update available — tap to update',
-        color: Colors.amber.shade700,
+        color: const Color(0xFF7E57C2), // violet — distinct from Pass & Play
         onTap: pwaApplyUpdate,
       );
     }
@@ -514,17 +514,98 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onPressed,
   }) {
     return SizedBox(
-      width: 220,
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          backgroundColor: color,
-          foregroundColor: Colors.white,
+      width: 230,
+      height: 52,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          // Vertical gradient (lighter top → darker bottom) gives the button
+          // a glossy, three-dimensional feel.
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_shade(color, 0.16), color, _shade(color, -0.14)],
+            stops: const [0.0, 0.5, 1.0],
+          ),
+          // Bright hairline border so each button reads as a raised key.
+          border: Border.all(color: Colors.white.withValues(alpha: 0.55), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.45),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+            const BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
-        onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(label),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onPressed,
+            child: Stack(
+              children: [
+                // Reflective shine across the top half.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: 24,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(13)),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withValues(alpha: 0.45),
+                          Colors.white.withValues(alpha: 0.0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, color: Colors.white, size: 20),
+                      const SizedBox(width: 10),
+                      Text(label,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
+}
+
+/// Lightens ([amount] > 0) or darkens ([amount] < 0) a color in HSL space.
+Color _shade(Color c, double amount) {
+  final hsl = HSLColor.fromColor(c);
+  return hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0)).toColor();
+}
+
+/// Formats an integer with comma thousands separators (e.g. 178691 -> 178,691).
+String _grouped(int n) {
+  final s = n.toString();
+  final buf = StringBuffer();
+  for (var i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+    buf.write(s[i]);
+  }
+  return buf.toString();
 }

@@ -17,6 +17,19 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.12.0] - 2026-06-22
+
+### Changed
+- **Richer look & feel.** Home-screen buttons now have a vertical gradient, a
+  bright hairline border, a reflective top shine, and a colored glow shadow.
+  Tiles get a stronger gloss and a bottom depth-shadow; the board frame and
+  cells gain subtle gradients and a drop shadow so the board pops (flat themes
+  — Battery Saver / High Contrast — stay flat).
+- **Distinct update color.** The "Update available" chip and the "Update now"
+  button are now violet instead of amber, so they no longer look like the
+  Pass & Play button.
+- The home-screen word count is now comma-grouped (e.g. "178,691 words").
+
 ## [1.11.1] - 2026-06-22
 
 ### Fixed

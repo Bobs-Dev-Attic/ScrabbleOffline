@@ -410,7 +410,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber.shade700),
+                        backgroundColor: const Color(0xFF7E57C2),
+                        foregroundColor: Colors.white),
                     onPressed: pwaApplyUpdate,
                     icon: const Icon(Icons.system_update_alt),
                     label: const Text('Update now'),

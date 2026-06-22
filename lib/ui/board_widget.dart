@@ -38,13 +38,34 @@ class BoardWidget extends StatelessWidget {
       builder: (context, constraints) {
         final dimension = constraints.biggest.shortestSide;
         final cellSize = dimension / kBoardSize;
+        final richFrame = theme.richDecoration;
         return Container(
           width: dimension,
           height: dimension,
-          padding: const EdgeInsets.all(2),
+          padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: theme.boardFrame,
-            borderRadius: BorderRadius.circular(6),
+            color: richFrame ? null : theme.boardFrame,
+            gradient: richFrame
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color.lerp(theme.boardFrame, Colors.white, 0.14)!,
+                      theme.boardFrame,
+                      Color.lerp(theme.boardFrame, Colors.black, 0.22)!,
+                    ],
+                  )
+                : null,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: richFrame
+                ? const [
+                    BoxShadow(
+                      color: Color(0x59000000),
+                      blurRadius: 18,
+                      offset: Offset(0, 7),
+                    ),
+                  ]
+                : null,
           ),
           child: Column(
             children: [
@@ -138,10 +159,25 @@ class BoardWidget extends StatelessWidget {
       },
       builder: (context, candidate, rejected) {
         final hovering = candidate.isNotEmpty;
+        final base = hovering ? theme.hover : _cellColor(theme, cellType);
+        // A subtle top-light → bottom-dark gradient gives each cell a little
+        // depth so the board reads as tactile rather than flat.
         return Container(
           margin: const EdgeInsets.all(0.5),
           decoration: BoxDecoration(
-            color: hovering ? theme.hover : _cellColor(theme, cellType),
+            color: theme.richDecoration ? null : base,
+            gradient: theme.richDecoration
+                ? LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color.lerp(base, Colors.white, 0.14)!,
+                      base,
+                      Color.lerp(base, Colors.black, 0.12)!,
+                    ],
+                    stops: const [0.0, 0.5, 1.0],
+                  )
+                : null,
             borderRadius: BorderRadius.circular(2),
           ),
           child: Center(child: content),

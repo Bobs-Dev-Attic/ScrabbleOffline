@@ -39,11 +39,12 @@ class TileWidget extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  _lighten(theme.tileGradient.first, 0.10),
+                  _lighten(theme.tileGradient.first, 0.16),
                   theme.tileGradient.first,
                   theme.tileGradient.last,
+                  _lighten(theme.tileGradient.last, -0.06),
                 ],
-                stops: const [0.0, 0.45, 1.0],
+                stops: const [0.0, 0.4, 0.82, 1.0],
               )
             : null,
         color: rich ? null : theme.tileGradient.first,
@@ -55,9 +56,9 @@ class TileWidget extends StatelessWidget {
         boxShadow: rich
             ? [
                 BoxShadow(
-                  color: const Color(0x66000000),
-                  blurRadius: size * 0.10,
-                  offset: Offset(size * 0.04, size * 0.06),
+                  color: const Color(0x73000000),
+                  blurRadius: size * 0.12,
+                  offset: Offset(size * 0.04, size * 0.07),
                 ),
               ]
             : null,
@@ -70,7 +71,7 @@ class TileWidget extends StatelessWidget {
               left: 0,
               right: 0,
               top: 0,
-              height: size * 0.5,
+              height: size * 0.52,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.vertical(
@@ -79,8 +80,30 @@ class TileWidget extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.white.withValues(alpha: 0.35),
+                      Colors.white.withValues(alpha: 0.48),
                       Colors.white.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          // Soft shadow across the bottom for added depth.
+          if (rich)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: size * 0.4,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(radius)),
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.16),
+                      Colors.black.withValues(alpha: 0.0),
                     ],
                   ),
                 ),
