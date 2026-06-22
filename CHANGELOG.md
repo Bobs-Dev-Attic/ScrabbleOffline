@@ -4,9 +4,13 @@ All notable changes to **Scrabble Offline** are recorded here. The format is
 loosely based on [Keep a Changelog](https://keepachangelog.com/), and the
 project aims to follow [Semantic Versioning](https://semver.org/).
 
-The version shown in the app (home screen, bottom-right; and Settings → App)
-is defined in `lib/app_info.dart` (`kAppVersion`) and mirrored in
-`pubspec.yaml`.
+**This file is the single source of truth for the version.** The topmost
+`## [X.Y.Z]` entry below defines the current release. The version shown in the
+app (home screen, bottom-right; and Settings → App) and in `pubspec.yaml` is
+derived from it by `tool/sync_version.py`, which runs during the build. To cut
+a release: add a new entry at the top here, then run
+`python3 tool/sync_version.py` (or just build — Vercel runs it). A test
+(`test/version_sync_test.dart`) fails if they ever drift.
 
 This list was reconstructed from the project's git history; versions group
 related commits into coherent, user-facing milestones.
