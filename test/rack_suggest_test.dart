@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scrabble_offline/engine/ai_player.dart';
 import 'package:scrabble_offline/engine/dictionary.dart';
@@ -216,6 +217,44 @@ void main() {
       game.recallAll();
       expect(game.ghostsFading, isFalse);
       expect(game.ghosts, isEmpty);
+    });
+
+    test('ghosts fade out on their own even if the player never places', () {
+      fakeAsync((async) {
+        final dict = Dictionary()
+          ..loadWords(File('assets/dictionary.txt').readAsLinesSync());
+        final game = _game(dict);
+        game.newGame();
+        game.currentPlayer.rack
+          ..clear()
+          ..addAll(const [
+            Tile(letter: 'C', value: 3),
+            Tile(letter: 'A', value: 1),
+            Tile(letter: 'R', value: 1),
+            Tile(letter: 'E', value: 1),
+            Tile(letter: 'S', value: 1),
+            Tile(letter: 'T', value: 1),
+            Tile(letter: 'O', value: 1),
+          ]);
+        game.currentPlayer.rackIds
+          ..clear()
+          ..addAll(List.generate(7, (i) => 4000 + i));
+
+        game.suggest();
+        expect(game.ghosts, isNotEmpty);
+        // Holds at full opacity briefly (not yet fading).
+        expect(game.ghostsFading, isFalse);
+
+        // After the short hold the fade begins automatically.
+        async.elapse(const Duration(milliseconds: 600));
+        expect(game.ghostsFading, isTrue);
+        expect(game.ghosts, isNotEmpty);
+
+        // Once the fade completes the ghosts are cleared — all within ~8-9s.
+        async.elapse(const Duration(milliseconds: GameState.kGhostFadeMs + 100));
+        expect(game.ghosts, isEmpty);
+        expect(game.ghostsFading, isFalse);
+      });
     });
   });
 
