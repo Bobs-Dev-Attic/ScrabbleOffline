@@ -26,7 +26,7 @@ external JSBoolean _offlineReady();
 external JSBoolean _updateAvailable();
 
 @JS('pwaCheckForUpdate')
-external void _checkForUpdate();
+external JSPromise<JSString> _checkForUpdate();
 
 @JS('pwaApplyUpdate')
 external void _applyUpdate();
@@ -36,6 +36,15 @@ external JSBoolean _isOnline();
 
 @JS('pwaFetchText')
 external JSPromise<JSString> _fetchText(JSString url);
+
+@JS('pwaGetLog')
+external JSString _getLog();
+
+@JS('pwaClearLog')
+external void _clearLog();
+
+@JS('pwaLog')
+external void _log(JSString msg);
 
 /// True when the app is already running as an installed PWA.
 bool pwaIsStandalone() {
@@ -86,10 +95,41 @@ bool pwaUpdateAvailable() {
   }
 }
 
-/// Asks the browser to check the server for a newer service worker.
-void pwaCheckForUpdate() {
+/// Asks the browser to check the server for a newer service worker, waiting
+/// until the result is known. Resolves to 'updated' (a new version is
+/// downloaded and ready), 'latest' (already current), 'error', or
+/// 'unsupported'. This is reliable — it waits for the new worker to finish
+/// installing rather than guessing with a fixed delay.
+Future<String> pwaCheckForUpdate() async {
   try {
-    _checkForUpdate();
+    final result = await _checkForUpdate().toDart;
+    return result.toDart;
+  } catch (_) {
+    return 'error';
+  }
+}
+
+/// Returns the PWA update log (newline-separated) for debugging in Settings.
+String pwaGetLog() {
+  try {
+    return _getLog().toDart;
+  } catch (_) {
+    return '';
+  }
+}
+
+/// Clears the PWA update log.
+void pwaClearLog() {
+  try {
+    _clearLog();
+  } catch (_) {}
+}
+
+/// Appends a line to the PWA update log (so the Dart side can record its own
+/// steps alongside the service-worker events).
+void pwaLog(String msg) {
+  try {
+    _log(msg.toJS);
   } catch (_) {}
 }
 

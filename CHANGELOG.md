@@ -17,6 +17,28 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.9.0] - 2026-06-22
+
+### Added
+- **Detailed update checking.** Settings → App now shows the **current version
+  (with build number)** and, when checking, the **available version** fetched
+  fresh from the server, plus a live status line ("Contacting server…",
+  "Update ready", etc.).
+- **Update log.** A new Settings → App → *Update log* opens a scrollable,
+  copyable log of service-worker / update events (registration, download,
+  install, apply, errors) for debugging.
+- App build number (`kAppBuild`) is now tracked and compared against the
+  server's `version.json` to detect updates explicitly.
+
+### Fixed
+- **Update reliability.** The "Check for updates" flow no longer guesses with a
+  fixed 3-second delay (which often required running it twice). It now awaits
+  the real result — waiting for the new service worker to finish downloading
+  and installing — before reporting status.
+- **Living background.** The slowly-drifting backdrop is alive again and far
+  more visible: a soft accent-tinted glow now drifts across a rotating
+  gradient in a continuous loop (still static on battery-saver / high-contrast).
+
 ## [1.8.0] - 2026-06-22
 
 ### Added
