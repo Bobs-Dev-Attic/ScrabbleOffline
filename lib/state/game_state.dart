@@ -126,10 +126,9 @@ class GameState extends ChangeNotifier {
         players.add(Player(name: 'Player ${i + 1}'));
       }
     }
-    // Then the computer opponents.
+    // Then the computer opponents (short labels: CMP1, CMP2, CMP3).
     for (var i = 0; i < computerPlayers; i++) {
-      final name = computerPlayers == 1 ? 'Computer' : 'Computer ${i + 1}';
-      players.add(Player(name: name, isAI: true));
+      players.add(Player(name: 'CMP${i + 1}', isAI: true));
     }
 
     for (final p in players) {

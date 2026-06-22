@@ -254,8 +254,8 @@ void main() {
       expect(game.players[0].name, 'You');
       expect(game.players[1].isAI, isTrue);
       expect(game.players[2].isAI, isTrue);
-      expect(game.players[1].name, 'Computer 1');
-      expect(game.players[2].name, 'Computer 2');
+      expect(game.players[1].name, 'CMP1');
+      expect(game.players[2].name, 'CMP2');
       expect(game.vsComputer, isTrue);
     });
   });

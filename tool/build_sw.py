@@ -93,6 +93,21 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // pass through cross-origin
 
+  // "?fresh" requests (e.g. Update dictionary) go network-first.
+  if (url.searchParams.has('fresh')) {
+    event.respondWith((async () => {
+      try {
+        return await fetch(req);
+      } catch (e) {
+        const cache = await caches.open(CACHE);
+        const cached = await cache.match(req, { ignoreSearch: true });
+        if (cached) return cached;
+        throw e;
+      }
+    })());
+    return;
+  }
+
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(req, { ignoreSearch: true });

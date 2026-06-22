@@ -60,6 +60,24 @@ class Dictionary {
     _extended = {for (final w in words) w.trim().toUpperCase()};
   }
 
+  /// Rebuilds the Scrabble word list in place from fresh raw text. Returns the
+  /// new word count. Used by the "Update dictionary" action.
+  int refreshFromRaw(String raw) {
+    _trie.clear();
+    _trie.loadFromRaw(raw);
+    return _trie.wordCount;
+  }
+
+  /// Rebuilds the expanded supplement in place from fresh raw text.
+  void refreshExtendedFromRaw(String raw) {
+    final set = <String>{};
+    for (final line in raw.split('\n')) {
+      final w = line.trim().toUpperCase();
+      if (w.isNotEmpty) set.add(w);
+    }
+    _extended = set;
+  }
+
   bool isValidWord(String word) {
     if (_trie.contains(word)) return true;
     if (permissive && _extended != null) {

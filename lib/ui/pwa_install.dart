@@ -27,6 +27,9 @@ external void _applyUpdate();
 @JS('pwaIsOnline')
 external JSBoolean _isOnline();
 
+@JS('pwaFetchText')
+external JSPromise<JSString> _fetchText(JSString url);
+
 /// True when the app is already running as an installed PWA.
 bool pwaIsStandalone() {
   try {
@@ -96,5 +99,16 @@ bool pwaIsOnline() {
     return _isOnline().toDart;
   } catch (_) {
     return true;
+  }
+}
+
+/// Fetches text fresh from the network (bypassing caches). Returns null on
+/// failure (e.g. offline).
+Future<String?> pwaFetchText(String url) async {
+  try {
+    final result = await _fetchText(url.toJS).toDart;
+    return result.toDart;
+  } catch (_) {
+    return null;
   }
 }
