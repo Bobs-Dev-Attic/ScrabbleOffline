@@ -17,6 +17,14 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.15.0] - 2026-06-22
+
+### Added
+- **Mix button.** Before you place any tile, the Recall button is now a **Mix**
+  button that randomly shuffles your rack; as soon as a tile is on the board it
+  switches back to **Recall**.
+- The **app icon** is now shown on the home screen above the title.
+
 ## [1.14.0] - 2026-06-22
 
 ### Added

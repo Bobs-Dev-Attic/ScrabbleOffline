@@ -17,6 +17,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "tool", "icon_source.png")
 ICONS = os.path.join(ROOT, "web", "icons")
 FAVICON = os.path.join(ROOT, "web", "favicon.png")
+# In-app copy (bundled Flutter asset) shown on the home screen.
+APP_ICON = os.path.join(ROOT, "assets", "app_icon.png")
 
 # The artwork sits on white, so extend white for maskable padding (seamless).
 MASK_BG = (255, 255, 255, 255)
@@ -48,6 +50,8 @@ def main():
     maskable(192).save(os.path.join(ICONS, "Icon-maskable-192.png"))
     maskable(512).save(os.path.join(ICONS, "Icon-maskable-512.png"))
     standard(64).save(FAVICON)
+    os.makedirs(os.path.dirname(APP_ICON), exist_ok=True)
+    standard(256).save(APP_ICON)
     print("Icons written from", SRC)
 
 

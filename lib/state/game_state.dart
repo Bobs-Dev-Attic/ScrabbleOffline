@@ -326,6 +326,32 @@ class GameState extends ChangeNotifier {
 
   /// Reorders a tile within the current player's rack (drag-to-arrange).
   /// Pending placements keep pointing at the right tiles via index remapping.
+  /// Randomly shuffles the current player's rack (and the parallel tile ids).
+  /// Offered as the "Mix" action before any tile is placed; a no-op once a
+  /// placement is in progress (Recall is shown instead) or on the AI's turn.
+  void mixRack() {
+    if (gameOver || isComputerTurn) return;
+    if (pending.isNotEmpty) return;
+    final rack = currentPlayer.rack;
+    final ids = currentPlayer.rackIds;
+    final n = rack.length;
+    if (n < 2) return;
+    final order = List<int>.generate(n, (i) => i)..shuffle();
+    final newRack = [for (final i in order) rack[i]];
+    final newIds = [for (final i in order) ids[i]];
+    rack
+      ..clear()
+      ..addAll(newRack);
+    ids
+      ..clear()
+      ..addAll(newIds);
+    // Mixing invalidates any active suggestion ordering / ghosts.
+    _cancelGhostFade();
+    ghosts = {};
+    suggestedIds = {};
+    notifyListeners();
+  }
+
   void reorderRack(int from, int to) {
     if (from == to) return;
     final rack = currentPlayer.rack;

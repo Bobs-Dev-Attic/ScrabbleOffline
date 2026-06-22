@@ -305,6 +305,16 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: Image.asset(
+                'assets/app_icon.png',
+                width: 104,
+                height: 104,
+                filterQuality: FilterQuality.medium,
+              ),
+            ),
+            const SizedBox(height: 16),
             const FittedBox(
               fit: BoxFit.scaleDown,
               child: Padding(

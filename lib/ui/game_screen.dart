@@ -504,12 +504,21 @@ class _GameScreenState extends State<GameScreen> {
           color: const Color(0xFF546E7A),
           onPressed: () => setState(() => _exchangeMode = true),
         ),
-        _action(
-          icon: Icons.undo,
-          label: 'Recall',
-          color: const Color(0xFF546E7A),
-          onPressed: hasPending ? game.recallAll : null,
-        ),
+        // Before any tile is placed this is "Mix" (shuffle the rack); once a
+        // tile is on the board it becomes "Recall" (return pending tiles).
+        hasPending
+            ? _action(
+                icon: Icons.undo,
+                label: 'Recall',
+                color: const Color(0xFF546E7A),
+                onPressed: game.recallAll,
+              )
+            : _action(
+                icon: Icons.shuffle,
+                label: 'Mix',
+                color: const Color(0xFF546E7A),
+                onPressed: game.mixRack,
+              ),
         _action(
           icon: Icons.auto_awesome,
           label: 'Suggest',

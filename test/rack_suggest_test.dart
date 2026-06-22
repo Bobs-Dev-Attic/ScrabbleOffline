@@ -75,6 +75,28 @@ void main() {
     });
   });
 
+  group('mixRack', () {
+    test('preserves the tiles and ids, and is a no-op while placing', () {
+      final game = _game(Dictionary()..loadWords(['CAT']));
+      game.newGame();
+      final before = game.currentPlayer.rack.map((t) => t.letter).toList()
+        ..sort();
+      game.mixRack();
+      final after = game.currentPlayer.rack.map((t) => t.letter).toList()
+        ..sort();
+      expect(after, before, reason: 'same multiset of letters after a mix');
+      expect(game.currentPlayer.rack.length, 7);
+      expect(game.currentPlayer.rackIds.length, 7);
+
+      // Once a tile is pending, Mix is disabled (Recall is shown instead).
+      game.placeTile(0, 7, 7);
+      final racked = game.currentPlayer.rack.map((t) => t.letter).toList();
+      game.mixRack();
+      expect(game.currentPlayer.rack.map((t) => t.letter).toList(), racked,
+          reason: 'mixRack is a no-op while a placement is in progress');
+    });
+  });
+
   group('suggest', () {
     test('rearranges the rack to spell a word, without touching the board', () {
       final dict = Dictionary()
