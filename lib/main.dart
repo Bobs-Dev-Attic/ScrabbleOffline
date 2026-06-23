@@ -214,6 +214,116 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _startRemote(BuildContext context) async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Two-device game'),
+        content: const Text(
+          'Play with a friend on another device by exchanging short codes — no '
+          'internet needed. One of you creates a game and sends the code; after '
+          "each turn you paste each other's codes.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'join'),
+            child: const Text('Join with code'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: const Color(0xFF5E35B1)),
+            onPressed: () => Navigator.pop(ctx, 'create'),
+            child: const Text('Create game'),
+          ),
+        ],
+      ),
+    );
+    if (!context.mounted) return;
+    if (choice == 'create') {
+      await _createRemote(context);
+    } else if (choice == 'join') {
+      await _joinRemote(context);
+    }
+  }
+
+  Future<void> _createRemote(BuildContext context) async {
+    final you = TextEditingController(text: 'You');
+    final friend = TextEditingController(text: 'Friend');
+    const ink = Color(0xFF22311F);
+    const lbl = TextStyle(color: Color(0xFF3A463E));
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Create two-device game'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: you,
+              style: const TextStyle(color: ink),
+              decoration: const InputDecoration(
+                  labelText: 'Your name', labelStyle: lbl),
+            ),
+            TextField(
+              controller: friend,
+              style: const TextStyle(color: ink),
+              decoration: const InputDecoration(
+                  labelText: "Friend's name", labelStyle: lbl),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Start')),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    game.createRemoteGame(youName: you.text, friendName: friend.text);
+    _open(context);
+  }
+
+  Future<void> _joinRemote(BuildContext context) async {
+    final code = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Join with code'),
+        content: TextField(
+          controller: code,
+          minLines: 2,
+          maxLines: 4,
+          style: const TextStyle(color: Color(0xFF22311F)),
+          decoration: const InputDecoration(
+            labelText: 'Paste the game code',
+            labelStyle: TextStyle(color: Color(0xFF3A463E)),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Join')),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    final err = game.joinRemoteGame(code.text);
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    _open(context);
+  }
+
   Future<void> _startVsComputer(BuildContext context) async {
     const ink = Color(0xFF3A463E);
     final difficulty = await showDialog<AiDifficulty>(
@@ -353,6 +463,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 game.newGame();
                 _open(context);
               },
+            ),
+            const SizedBox(height: 12),
+            _homeButton(
+              context,
+              icon: Icons.devices,
+              label: 'Two devices',
+              color: Colors.deepPurple.shade400,
+              onPressed: () => _startRemote(context),
             ),
             if (hasSave) ...[
               const SizedBox(height: 12),

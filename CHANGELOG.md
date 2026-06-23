@@ -17,6 +17,17 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.22.0] - 2026-06-22
+
+### Added
+- **Two-device play (share codes).** Play one game across two devices with no
+  internet: one player creates a game and the other joins by pasting a short
+  code. After each turn you share/paste a code (Copy to clipboard) and the game
+  stays perfectly in sync. Built on a shared seed + replayed moves, so each
+  device only shows its own rack and tile draws stay consistent. Swap is
+  unavailable in two-device games; the code is the game's source of truth (it
+  isn't written to the local "Continue" save).
+
 ## [1.21.0] - 2026-06-22
 
 ### Changed

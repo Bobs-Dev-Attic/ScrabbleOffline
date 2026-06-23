@@ -173,9 +173,7 @@ class BoardWidget extends StatelessWidget {
     return DragTarget<Object>(
       onWillAcceptWithDetails: (details) {
         if (committed != null || pending != null) return false;
-        if (game.gameOver || game.isComputerTurn || game.reviewingPotential) {
-          return false;
-        }
+        if (game.inputLocked) return false;
         final d = details.data;
         return d is RackDragData || d is BoardDragData;
       },

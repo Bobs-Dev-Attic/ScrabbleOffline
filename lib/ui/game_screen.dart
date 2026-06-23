@@ -8,6 +8,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/tile.dart';
 import '../models/tile_bag.dart';
@@ -502,6 +503,11 @@ class _GameScreenState extends State<GameScreen> {
       );
     }
 
+    // Two-device game: while it's the other device's turn, share / receive codes.
+    if (game.isRemote && !game.isLocalTurn && !game.gameOver) {
+      return _remoteHandoff();
+    }
+
     if (_exchangeMode) {
       return Row(
         children: [
@@ -533,12 +539,14 @@ class _GameScreenState extends State<GameScreen> {
           color: const Color(0xFF546E7A),
           onPressed: _confirmPass,
         ),
-        _action(
-          icon: Icons.swap_horiz,
-          label: 'Swap',
-          color: const Color(0xFF546E7A),
-          onPressed: () => setState(() => _exchangeMode = true),
-        ),
+        // Swap reshuffles the bag, so it's unavailable in two-device games.
+        if (!game.isRemote)
+          _action(
+            icon: Icons.swap_horiz,
+            label: 'Swap',
+            color: const Color(0xFF546E7A),
+            onPressed: () => setState(() => _exchangeMode = true),
+          ),
         // Before any tile is placed this is "Mix" (shuffle the rack); once a
         // tile is on the board it becomes "Recall" (return pending tiles).
         hasPending
@@ -640,6 +648,123 @@ class _GameScreenState extends State<GameScreen> {
         ),
       );
     }
+  }
+
+  // --- Two-device handoff ----------------------------------------------------
+
+  Widget _remoteHandoff() {
+    final opp = game.remoteOpponentName;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text("Waiting for $opp",
+            style: const TextStyle(color: Colors.white, fontSize: 14)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5E35B1),
+                    foregroundColor: Colors.white),
+                onPressed: _showShareDialog,
+                icon: const Icon(Icons.ios_share, size: 18),
+                label: const Text('Share my move'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal.shade700,
+                    foregroundColor: Colors.white),
+                onPressed: _showReceiveDialog,
+                icon: const Icon(Icons.download, size: 18),
+                label: const Text('Enter their move'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _showShareDialog() {
+    final code = game.remoteShareCode() ?? '';
+    final opp = game.remoteOpponentName;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Send this to $opp'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              code,
+              style: const TextStyle(
+                  fontFamily: 'monospace', fontSize: 12, color: Color(0xFF3A463E)),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              // Capture before the async gap to avoid using contexts after it.
+              final nav = Navigator.of(ctx);
+              final messenger = ScaffoldMessenger.of(context);
+              await Clipboard.setData(ClipboardData(text: code));
+              nav.pop();
+              messenger.showSnackBar(
+                const SnackBar(content: Text('Code copied — send it to your opponent.')),
+              );
+            },
+            child: const Text('Copy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReceiveDialog() {
+    final ctrl = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text("Enter ${game.remoteOpponentName}'s move"),
+        content: TextField(
+          controller: ctrl,
+          minLines: 2,
+          maxLines: 4,
+          style: const TextStyle(color: Color(0xFF22311F)),
+          decoration: const InputDecoration(
+            labelText: 'Paste their code',
+            labelStyle: TextStyle(color: Color(0xFF3A463E)),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final err = game.applyRemoteCode(ctrl.text);
+              Navigator.pop(ctx);
+              if (err != null) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(err)));
+              }
+            },
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _confirmExchange() {

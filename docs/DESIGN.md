@@ -198,6 +198,21 @@ working around Flutter's defaults:
 `vercel.json` serves assets with `must-revalidate` (no long-lived immutable
 caching) so updates propagate; the service worker provides the offline cache.
 
+## 7b. Two-device play (share codes)
+
+Two people on different devices can play one game with **no server**, preserving
+the offline model. A remote game is fully reproducible from a **shared random
+seed** plus the ordered **move list** (`lib/engine/remote_game.dart`): both
+devices build the same seeded `TileBag`, deal identically, and replay each
+other's moves, so tile draws stay in lockstep while each device only shows its
+own rack. Each turn the player shares a short code (URL-safe base64 of the
+`{seed, names, moves}` JSON, prefixed `SCRB1.`); the opponent pastes it and the
+game rebuilds deterministically (`GameState.applyRemoteCode` →
+`_rebuildRemote`). Swap is disabled in remote games (it would reshuffle the bag
+non-deterministically), and remote games aren't written to the local save (the
+code is the source of truth). Codes are exchanged by any channel — copy/paste
+for now; QR is a natural future addition.
+
 ---
 
 ## 8. Build & deployment

@@ -6,6 +6,7 @@
 // See docs/DESIGN.md for how this fits the overall architecture.
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -13,6 +14,7 @@ import '../engine/ai_player.dart';
 import '../engine/dictionary.dart';
 import '../engine/move_generator.dart';
 import '../engine/referee.dart';
+import '../engine/remote_game.dart';
 import '../models/board.dart';
 import '../models/player.dart';
 import '../models/tile.dart';
@@ -161,6 +163,37 @@ class GameState extends ChangeNotifier {
 
   /// Index of the winning player (-1 until the game ends).
   int winnerIndex = -1;
+
+  // --- Two-device (remote share-code) play -----------------------------------
+
+  /// True when this is a two-device game (moves are exchanged as codes).
+  bool isRemote = false;
+
+  /// Which seat this device controls (0 = creator, 1 = joiner).
+  int localSeat = 0;
+  int _remoteSeed = 0;
+  List<String> _remoteNames = const [];
+
+  /// The ordered move log that, with the seed, fully reproduces the game.
+  List<RemoteMove> remoteMoves = [];
+
+  /// True while replaying moves from a received code (suppresses re-recording).
+  bool _replaying = false;
+
+  /// True when the local player may act (always true off-remote).
+  bool get isLocalTurn => !isRemote || currentPlayerIndex == localSeat;
+
+  /// The player whose rack should be shown: the local seat in a remote game,
+  /// otherwise the current player.
+  Player get displayPlayer => isRemote ? players[localSeat] : currentPlayer;
+
+  /// True when board/control input should be locked.
+  bool get inputLocked =>
+      gameOver || isComputerTurn || reviewingPotential || !isLocalTurn;
+
+  /// Display name of the opponent in a remote game.
+  String get remoteOpponentName =>
+      isRemote && _remoteNames.length == 2 ? _remoteNames[1 - localSeat] : '';
 
   /// Set once the controller is disposed, so pending timers / scheduled AI
   /// turns don't call notifyListeners() on a dead notifier.
@@ -339,9 +372,10 @@ class GameState extends ChangeNotifier {
   List<MapEntry<int, Tile>> get availableRackTiles {
     final usedIndices = pending.values.map((p) => p.rackIndex).toSet();
     final result = <MapEntry<int, Tile>>[];
-    for (var i = 0; i < currentPlayer.rack.length; i++) {
+    final rack = displayPlayer.rack;
+    for (var i = 0; i < rack.length; i++) {
       if (!usedIndices.contains(i)) {
-        result.add(MapEntry(i, currentPlayer.rack[i]));
+        result.add(MapEntry(i, rack[i]));
       }
     }
     return result;
@@ -599,6 +633,14 @@ class GameState extends ChangeNotifier {
     // Apply the move but defer advancing the turn when we may show a review.
     _applyValidatedMove(placements, result, complete: false);
 
+    // Record the move so it can be shared with the other device.
+    if (isRemote && !_replaying) {
+      remoteMoves.add(RemoteMove.play([
+        for (final p in placements)
+          [p.row, p.col, p.tile.letter, p.tile.isBlank ? 1 : 0],
+      ]));
+    }
+
     if (best != null && result.score >= best.score) {
       // Perfect play! Celebrate (unless they used Suggest), then continue.
       if (!usedSuggest) {
@@ -712,6 +754,11 @@ class GameState extends ChangeNotifier {
   void pass() {
     if (gameOver) return;
     recallAll();
+    if (isRemote && !_replaying) remoteMoves.add(const RemoteMove.pass());
+    _doPass();
+  }
+
+  void _doPass() {
     consecutivePasses++;
     statusMessage = '${currentPlayer.name} passed.';
     _addHistory(MoveLogEntry(currentPlayer.name, 'pass', 0));
@@ -729,6 +776,13 @@ class GameState extends ChangeNotifier {
   /// least 7 tiles, per standard rules). Counts as a turn.
   bool exchange(List<int> rackIndices) {
     if (gameOver) return false;
+    if (isRemote) {
+      // Swapping would reshuffle the bag non-deterministically; disabled in
+      // two-device games for now.
+      statusMessage = 'Swap isn\'t available in two-device games.';
+      notifyListeners();
+      return false;
+    }
     if (bag.remaining < kRackCapacity) {
       statusMessage = 'Not enough tiles in the bag to exchange.';
       notifyListeners();
@@ -753,6 +807,125 @@ class GameState extends ChangeNotifier {
     notifyListeners();
     _scheduleAiTurnIfNeeded();
     return true;
+  }
+
+  // --- Two-device (remote share-code) play -----------------------------------
+
+  /// Starts a new two-device game as the creator (seat 0).
+  void createRemoteGame({required String youName, required String friendName}) {
+    localSeat = 0;
+    final seed = Random().nextInt(0x7fffffff);
+    _setupRemoteBoard(seed, [
+      youName.trim().isEmpty ? 'You' : youName.trim(),
+      friendName.trim().isEmpty ? 'Friend' : friendName.trim(),
+    ]);
+    notifyListeners();
+  }
+
+  /// Joins a game from a shared code as the joiner (seat 1). Returns null on
+  /// success, or an error message.
+  String? joinRemoteGame(String code) {
+    final decoded = RemoteGameCode.decode(code);
+    if (decoded == null) return 'That code could not be read.';
+    localSeat = 1;
+    try {
+      _rebuildRemote(decoded.seed, decoded.names, decoded.moves);
+    } catch (_) {
+      return 'That code contains an invalid move.';
+    }
+    notifyListeners();
+    return null;
+  }
+
+  /// The code to share with the other device after taking a turn.
+  String? remoteShareCode() => isRemote
+      ? RemoteGameCode(seed: _remoteSeed, names: _remoteNames, moves: remoteMoves)
+          .encode()
+      : null;
+
+  /// Applies the opponent's shared code. Returns null on success or an error.
+  String? applyRemoteCode(String code) {
+    if (!isRemote) return 'Not in a two-device game.';
+    final decoded = RemoteGameCode.decode(code);
+    if (decoded == null) return 'That code could not be read.';
+    if (decoded.seed != _remoteSeed) return 'That code is for a different game.';
+    if (decoded.moves.length <= remoteMoves.length) {
+      return 'No new moves in that code yet.';
+    }
+    try {
+      _rebuildRemote(decoded.seed, decoded.names, decoded.moves);
+    } catch (_) {
+      return 'That code contains an invalid move.';
+    }
+    notifyListeners();
+    return null;
+  }
+
+  void _setupRemoteBoard(int seed, List<String> names) {
+    isRemote = true;
+    _remoteSeed = seed;
+    _remoteNames = List.of(names);
+    vsComputer = false;
+    _aiToken++;
+    board = GameBoard();
+    bag = TileBag(random: Random(seed));
+    players = [for (final n in names) Player(name: n)];
+    for (final p in players) {
+      p.refill(bag.draw);
+    }
+    currentPlayerIndex = 0;
+    pending.clear();
+    statusMessage = '';
+    gameOver = false;
+    aiThinking = false;
+    consecutivePasses = 0;
+    lastPlaced = {};
+    lastPlacedOrder = {};
+    suggestedIds = {};
+    history.clear();
+    _cancelGhostFade();
+    ghosts = {};
+    _suggestionCycle = [];
+    _suggestionSignature = '';
+    _suggestionIndex = 0;
+    _resetFeedbackState();
+    remoteMoves = [];
+  }
+
+  /// Rebuilds the entire game deterministically from the seed + move list.
+  void _rebuildRemote(int seed, List<String> names, List<RemoteMove> moves) {
+    _replaying = true;
+    try {
+      _setupRemoteBoard(seed, names);
+      for (var i = 0; i < moves.length; i++) {
+        currentPlayerIndex = i % players.length;
+        final m = moves[i];
+        if (m.type == 'pass') {
+          _doPass();
+        } else {
+          final placements = _placementsFromRemote(m);
+          final result = referee.evaluate(board, placements);
+          if (!result.valid) throw StateError('invalid remote move');
+          _applyValidatedMove(placements, result, complete: true);
+        }
+      }
+      remoteMoves = List.of(moves);
+    } finally {
+      _replaying = false;
+    }
+  }
+
+  List<Placement> _placementsFromRemote(RemoteMove m) {
+    return [
+      for (final e in m.placements)
+        Placement(
+          e[0] as int,
+          e[1] as int,
+          (e[3] as int) == 1
+              ? const Tile.blank().assignBlank(e[2] as String)
+              : Tile(letter: e[2] as String, value: letterValue(e[2] as String)),
+        ),
+    ];
   }
 
   // --- Computer opponent -----------------------------------------------------
@@ -849,6 +1022,8 @@ class GameState extends ChangeNotifier {
   }
 
   Future<void> _persist() async {
+    // Remote games are reproduced from their share codes, not the local save.
+    if (isRemote) return;
     await persistence.save(
       board: board,
       players: players,

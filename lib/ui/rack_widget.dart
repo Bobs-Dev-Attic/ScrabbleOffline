@@ -92,7 +92,7 @@ class RackWidget extends StatelessWidget {
     double gap,
   ) {
     final rackIndex = entry.key;
-    final id = game.currentPlayer.rackIds[rackIndex];
+    final id = game.displayPlayer.rackIds[rackIndex];
     final left = startX + displayIndex * (size + gap);
 
     return AnimatedPositioned(
