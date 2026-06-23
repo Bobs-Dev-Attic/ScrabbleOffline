@@ -9,6 +9,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../models/tile.dart';
 import '../models/tile_bag.dart';
@@ -18,6 +19,7 @@ import 'animated_background.dart';
 import 'board_widget.dart';
 import 'confetti_overlay.dart';
 import 'game_theme.dart';
+import 'pwa_install.dart';
 import 'rack_widget.dart';
 import 'settings_screen.dart';
 
@@ -699,10 +701,37 @@ class _GameScreenState extends State<GameScreen> {
         content: SizedBox(
           width: double.maxFinite,
           child: SingleChildScrollView(
-            child: SelectableText(
-              code,
-              style: const TextStyle(
-                  fontFamily: 'monospace', fontSize: 12, color: Color(0xFF3A463E)),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // QR for quick scanning; falls back to the text code below.
+                Center(
+                  child: QrImageView(
+                    data: code,
+                    version: QrVersions.auto,
+                    size: 230,
+                    backgroundColor: Colors.white,
+                    errorStateBuilder: (ctx, err) => const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Text(
+                        'This game is too long for a QR code — copy the text '
+                        'below instead.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Color(0xFF3A463E)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SelectableText(
+                  code,
+                  style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: Color(0xFF3A463E)),
+                ),
+              ],
             ),
           ),
         ),
@@ -751,6 +780,14 @@ class _GameScreenState extends State<GameScreen> {
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancel'),
           ),
+          if (pwaScanQrSupported())
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _scanQrAndApply();
+              },
+              child: const Text('Scan QR'),
+            ),
           TextButton(
             onPressed: () {
               final err = game.applyRemoteCode(ctrl.text);
@@ -765,6 +802,22 @@ class _GameScreenState extends State<GameScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _scanQrAndApply() async {
+    final scanned = await pwaScanQr();
+    if (!mounted) return;
+    if (scanned == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No QR code detected.')),
+      );
+      return;
+    }
+    final err = game.applyRemoteCode(scanned);
+    if (err != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(err)));
+    }
   }
 
   void _confirmExchange() {

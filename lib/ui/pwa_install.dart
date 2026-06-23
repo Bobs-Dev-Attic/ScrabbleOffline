@@ -40,6 +40,12 @@ external JSPromise<JSString> _fetchText(JSString url);
 @JS('pwaHardReset')
 external void _hardReset();
 
+@JS('pwaScanQrSupported')
+external JSBoolean _scanQrSupported();
+
+@JS('pwaScanQr')
+external JSPromise<JSString> _scanQr();
+
 @JS('pwaGetLog')
 external JSString _getLog();
 
@@ -109,6 +115,27 @@ Future<String> pwaCheckForUpdate() async {
     return result.toDart;
   } catch (_) {
     return 'error';
+  }
+}
+
+/// True when the browser can scan QR codes (BarcodeDetector available).
+bool pwaScanQrSupported() {
+  try {
+    return _scanQrSupported().toDart;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Opens the camera/photo picker and decodes a QR, returning its text (null if
+/// none found / cancelled / unsupported). Fully offline (native decoder).
+Future<String?> pwaScanQr() async {
+  try {
+    final r = await _scanQr().toDart;
+    final s = r.toDart;
+    return s.isEmpty ? null : s;
+  } catch (_) {
+    return null;
   }
 }
 

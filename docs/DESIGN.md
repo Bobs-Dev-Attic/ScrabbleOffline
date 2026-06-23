@@ -210,8 +210,11 @@ own rack. Each turn the player shares a short code (URL-safe base64 of the
 game rebuilds deterministically (`GameState.applyRemoteCode` →
 `_rebuildRemote`). Swap is disabled in remote games (it would reshuffle the bag
 non-deterministically), and remote games aren't written to the local save (the
-code is the source of truth). Codes are exchanged by any channel — copy/paste
-for now; QR is a natural future addition.
+code is the source of truth). Codes are exchanged by any channel — copy/paste,
+or **QR**: generated on-device with the pure-Dart `qr_flutter` and scanned with
+the browser-native **BarcodeDetector** API (via js_interop, no camera library or
+CDN), with a paste fallback where BarcodeDetector is unavailable (e.g. iOS
+Safari). Both stay fully offline.
 
 ---
 

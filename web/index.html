@@ -166,6 +166,52 @@
       return await resp.text();
     };
 
+    // ---- QR scanning via the browser-native BarcodeDetector (no CDN) ----
+    window.pwaScanQrSupported = function () {
+      return typeof window.BarcodeDetector !== 'undefined';
+    };
+    // Opens the camera/photo picker, decodes a QR from the captured image, and
+    // resolves the decoded text ('' if none / cancelled). Fully offline.
+    window.pwaScanQr = function () {
+      if (typeof window.BarcodeDetector === 'undefined') return Promise.resolve('');
+      return new Promise(function (resolve) {
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.setAttribute('capture', 'environment');
+        input.style.position = 'fixed';
+        input.style.left = '-9999px';
+        document.body.appendChild(input);
+        var settled = false;
+        var done = function (v) {
+          if (settled) return; settled = true;
+          try { document.body.removeChild(input); } catch (e) {}
+          resolve(v);
+        };
+        input.addEventListener('change', function () {
+          (async function () {
+            try {
+              var file = input.files && input.files[0];
+              if (!file) return done('');
+              var bitmap = await createImageBitmap(file);
+              var detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+              var codes = await detector.detect(bitmap);
+              done(codes && codes.length ? codes[0].rawValue : '');
+            } catch (e) { pwaLog('qr scan error: ' + e); done(''); }
+          })();
+        });
+        // If the picker is cancelled there's no change event; resolve after the
+        // window regains focus with no file selected.
+        window.addEventListener('focus', function onF() {
+          window.removeEventListener('focus', onF);
+          setTimeout(function () {
+            if (!settled && (!input.files || !input.files.length)) done('');
+          }, 1000);
+        });
+        input.click();
+      });
+    };
+
     // Nuclear "force update": delete every cache, unregister all service
     // workers, then reload from the network with a cache-busting query. This
     // always recovers an installed app that is stuck on an old version.

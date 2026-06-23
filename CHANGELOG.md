@@ -17,6 +17,16 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.23.0] - 2026-06-22
+
+### Added
+- **QR codes for two-device play.** The "Share my move" dialog now shows a QR
+  of the game code (generated on-device, offline), and "Enter their move" offers
+  **Scan QR** on supported browsers — decoded with the browser-native
+  BarcodeDetector (no camera library, no CDN). Copy/paste remains the fallback
+  (e.g. on iOS Safari). Long games that exceed QR capacity fall back to the text
+  code automatically.
+
 ## [1.22.0] - 2026-06-22
 
 ### Added
