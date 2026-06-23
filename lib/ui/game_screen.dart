@@ -19,6 +19,7 @@ import 'animated_background.dart';
 import 'board_widget.dart';
 import 'confetti_overlay.dart';
 import 'game_theme.dart';
+import 'help_screen.dart';
 import 'pwa_install.dart';
 import 'rack_widget.dart';
 import 'settings_screen.dart';
@@ -74,6 +75,10 @@ class _GameScreenState extends State<GameScreen> {
                           SettingsScreen(settings: widget.settings, game: game),
                     ),
                   );
+                case 'help':
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const HelpScreen()),
+                  );
               }
             },
             itemBuilder: (_) => const [
@@ -92,6 +97,15 @@ class _GameScreenState extends State<GameScreen> {
                   leading: Icon(Icons.tune, color: Colors.white),
                   title:
                       Text('Settings', style: TextStyle(color: Colors.white)),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'help',
+                child: ListTile(
+                  leading: Icon(Icons.help_outline, color: Colors.white),
+                  title: Text('How to play',
+                      style: TextStyle(color: Colors.white)),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),

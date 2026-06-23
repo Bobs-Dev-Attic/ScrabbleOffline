@@ -18,6 +18,7 @@ import 'state/settings.dart';
 import 'ui/animated_background.dart';
 import 'ui/game_screen.dart';
 import 'ui/game_theme.dart';
+import 'ui/help_screen.dart';
 import 'ui/pwa_install.dart';
 import 'ui/settings_screen.dart';
 
@@ -520,6 +521,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: () => _installApp(context),
               ),
             ],
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const HelpScreen()),
+              ),
+              icon: const Icon(Icons.help_outline, color: Colors.white70, size: 20),
+              label: const Text('How to play',
+                  style: TextStyle(color: Colors.white70)),
+            ),
           ],
         ),
         ),

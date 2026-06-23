@@ -17,6 +17,14 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.24.0] - 2026-06-22
+
+### Added
+- **How-to-play guide.** A new Help screen explains the rules and every feature
+  (placing tiles, blanks, premium squares, scoring/bingo, the turn buttons,
+  coaching, two-device play, themes, offline/install). Open it from "How to
+  play" on the home screen or the in-game menu.
+
 ## [1.23.0] - 2026-06-22
 
 ### Added
