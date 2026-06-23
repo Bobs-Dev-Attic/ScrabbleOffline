@@ -146,6 +146,9 @@ class GameState extends ChangeNotifier {
 
   /// The best achievable score, shown during a potential review.
   int reviewPotential = 0;
+
+  /// The best word the player missed (shown during a potential review).
+  String reviewWord = '';
   Timer? _reviewTimer;
 
   /// Cell "r,c" -> index of the player who placed the committed tile there, so
@@ -191,6 +194,7 @@ class GameState extends ChangeNotifier {
     _reviewTimer = null;
     reviewingPotential = false;
     reviewPotential = 0;
+    reviewWord = '';
     _usedSuggestThisTurn = false;
     ghostFadeMs = kGhostFadeMs;
     celebrateWin = false;
@@ -676,17 +680,18 @@ class GameState extends ChangeNotifier {
     }
     reviewingPotential = true;
     reviewPotential = best.score;
+    reviewWord = best.mainWord;
     _cancelGhostFade();
-    ghostFadeMs = 2500;
+    ghostFadeMs = 5000; // longer dwell so the missed word is readable
     ghosts = {
       for (final p in best.placements) '${p.row},${p.col}': p.tile,
     };
     ghostsFading = false;
     notifyListeners();
 
-    // Hold one frame at full opacity, then fade, then continue the game.
+    // Hold a moment at full opacity, then fade, then continue the game.
     _reviewTimer?.cancel();
-    _reviewTimer = Timer(const Duration(milliseconds: 400), () {
+    _reviewTimer = Timer(const Duration(milliseconds: 700), () {
       if (_disposed) return;
       ghostsFading = true;
       notifyListeners();
@@ -696,6 +701,7 @@ class GameState extends ChangeNotifier {
         ghostsFading = false;
         reviewingPotential = false;
         reviewPotential = 0;
+        reviewWord = '';
         ghostFadeMs = kGhostFadeMs;
         _completeTurn();
       });

@@ -88,11 +88,13 @@ void main() {
         expect(game.reviewingPotential, isTrue);
         expect(game.ghosts, isNotEmpty, reason: 'best placement shown as ghosts');
         expect(game.reviewPotential, 14);
+        expect(game.reviewWord, 'ABC', reason: 'shows the missed word');
         expect(game.currentPlayerIndex, 0, reason: 'turn deferred during review');
 
-        async.elapse(const Duration(seconds: 5));
+        async.elapse(const Duration(seconds: 8));
         expect(game.reviewingPotential, isFalse);
         expect(game.ghosts, isEmpty);
+        expect(game.reviewWord, '');
         expect(game.currentPlayerIndex, 1, reason: 'turn advances after review');
       });
     });

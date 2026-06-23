@@ -1,7 +1,7 @@
 name: scrabble_offline
 description: A 100% offline, standalone Scrabble game built with Flutter Web.
 publish_to: "none"
-version: 1.20.0+23
+version: 1.21.0+24
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

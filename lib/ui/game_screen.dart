@@ -407,13 +407,13 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _statusBar() {
-    // After a sub-optimal play, highlight the best score that was possible.
+    // After a sub-optimal play, highlight the best word that was possible.
     if (game.reviewingPotential) {
-      return _statusBox(
-        '✨ Best play here was ${game.reviewPotential} points',
-        const Color(0xE6B5965A),
-        bold: true,
-      );
+      final word = game.reviewWord;
+      final msg = word.isEmpty
+          ? '✨ Best play here was ${game.reviewPotential} points'
+          : '✨ You missed "$word" for ${game.reviewPotential} points';
+      return _statusBox(msg, const Color(0xE6B5965A), bold: true);
     }
     // While the player is placing tiles, show the live potential score.
     if (game.pending.isNotEmpty && !game.isComputerTurn) {

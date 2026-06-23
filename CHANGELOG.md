@@ -17,6 +17,14 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.21.0] - 2026-06-22
+
+### Changed
+- **Missed-word coaching is clearer.** After a sub-optimal play, the best
+  placement's ghost tiles now stay visible longer (~5s), and the status bar
+  names the word you missed and its points (e.g. "✨ You missed \"QUARTZ\" for
+  48 points").
+
 ## [1.20.0] - 2026-06-22
 
 ### Added
