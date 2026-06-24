@@ -57,10 +57,16 @@ class _ScrabbleAppState extends State<ScrabbleApp> {
       await dictionary.loadExtended();
       dictionary.permissive = true;
     }
-    return AppServices(
-      GameState(dictionary: dictionary, persistence: persistence),
-      settings,
-    );
+    final game = GameState(dictionary: dictionary, persistence: persistence);
+    // Play synthesized sound effects for game events, honoring the user's
+    // sound settings (volume + per-sound toggles).
+    game.onSound = (name) {
+      final key = name == 'win' ? 'celebrate' : name;
+      if (settings.soundEnabled(key) && settings.soundVolume > 0) {
+        pwaPlaySound(name, settings.soundVolume);
+      }
+    };
+    return AppServices(game, settings);
   }
 
   @override

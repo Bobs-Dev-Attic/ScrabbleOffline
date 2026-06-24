@@ -212,6 +212,52 @@
       });
     };
 
+    // ---- Synthesized sound effects (Web Audio, offline, no assets) ----
+    window.__audioCtx = null;
+    window.pwaPlaySound = function (name, volume) {
+      try {
+        var vol = Math.max(0, Math.min(1, volume));
+        if (vol <= 0) return;
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!window.__audioCtx) window.__audioCtx = new AC();
+        var ctx = window.__audioCtx;
+        if (ctx.state === 'suspended') ctx.resume();
+        var now = ctx.currentTime;
+        var master = ctx.createGain();
+        master.gain.value = vol;
+        master.connect(ctx.destination);
+        function tone(freq, start, dur, type, peak) {
+          var o = ctx.createOscillator();
+          var g = ctx.createGain();
+          o.type = type || 'sine';
+          o.frequency.value = freq;
+          g.gain.setValueAtTime(0.0001, now + start);
+          g.gain.linearRampToValueAtTime(peak == null ? 0.5 : peak, now + start + 0.012);
+          g.gain.exponentialRampToValueAtTime(0.0008, now + start + dur);
+          o.connect(g);
+          g.connect(master);
+          o.start(now + start);
+          o.stop(now + start + dur + 0.03);
+        }
+        function chord(freqs, step, dur, type, peak) {
+          for (var i = 0; i < freqs.length; i++) tone(freqs[i], i * step, dur, type, peak);
+        }
+        switch (name) {
+          case 'place': tone(880, 0, 0.08, 'triangle', 0.5); break;
+          case 'tap': tone(660, 0, 0.05, 'square', 0.3); break;
+          case 'play': chord([523.25, 659.25, 783.99], 0.09, 0.22, 'sine', 0.45); break;
+          case 'celebrate': chord([523, 659, 784, 1047], 0.08, 0.2, 'triangle', 0.45); break;
+          case 'win': chord([523, 659, 784, 1047, 1319], 0.12, 0.32, 'triangle', 0.5); break;
+          case 'invalid': tone(180, 0, 0.18, 'sawtooth', 0.35); tone(150, 0.09, 0.24, 'sawtooth', 0.35); break;
+          case 'pass': tone(330, 0, 0.13, 'sine', 0.35); break;
+          case 'swap': chord([440, 540, 640], 0.06, 0.1, 'triangle', 0.4); break;
+          case 'suggest': chord([784, 988, 1175], 0.05, 0.14, 'sine', 0.4); break;
+          default: tone(700, 0, 0.08, 'sine', 0.4);
+        }
+      } catch (e) {}
+    };
+
     // Nuclear "force update": delete every cache, unregister all service
     // workers, then reload from the network with a cache-busting query. This
     // always recovers an installed app that is stuck on an old version.

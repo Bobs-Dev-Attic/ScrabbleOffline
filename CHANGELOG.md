@@ -17,6 +17,16 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.25.0] - 2026-06-22
+
+### Added
+- **Sound effects.** Short, synthesized sounds for placing a tile, playing a
+  word, invalid moves, pass, swap, Suggest, and celebrations/wins — generated
+  on-device with the Web Audio API (no audio files, no network, fully offline).
+- **Sound settings** (Settings → Sounds): a master volume slider and an on/off
+  toggle for each sound, so you can silence the ones you don't want. Toggling a
+  sound on previews it.
+
 ## [1.24.0] - 2026-06-22
 
 ### Added

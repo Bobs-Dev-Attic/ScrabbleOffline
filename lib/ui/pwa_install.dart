@@ -40,6 +40,9 @@ external JSPromise<JSString> _fetchText(JSString url);
 @JS('pwaHardReset')
 external void _hardReset();
 
+@JS('pwaPlaySound')
+external void _playSound(JSString name, JSNumber volume);
+
 @JS('pwaScanQrSupported')
 external JSBoolean _scanQrSupported();
 
@@ -116,6 +119,14 @@ Future<String> pwaCheckForUpdate() async {
   } catch (_) {
     return 'error';
   }
+}
+
+/// Plays a short synthesized sound effect at [volume] (0–1). No-op off the web
+/// or when audio is unavailable.
+void pwaPlaySound(String name, double volume) {
+  try {
+    _playSound(name.toJS, volume.toJS);
+  } catch (_) {}
 }
 
 /// True when the browser can scan QR codes (BarcodeDetector available).

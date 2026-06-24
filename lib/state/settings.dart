@@ -54,6 +54,25 @@ class SettingsController extends ChangeNotifier {
   /// the best placement. Default on.
   bool bestMoveFeedback = true;
 
+  /// Master sound-effects volume (0–1).
+  double soundVolume = 0.7;
+
+  /// Sound keys the user has turned off (all on by default).
+  Set<String> _disabledSounds = {};
+
+  /// All toggleable sound keys (drives the Settings list).
+  static const List<String> soundKeys = [
+    'place',
+    'play',
+    'invalid',
+    'pass',
+    'swap',
+    'suggest',
+    'celebrate',
+  ];
+
+  bool soundEnabled(String key) => !_disabledSounds.contains(key);
+
   List<CustomPalette> customPalettes = [];
 
   bool get isCustomActive => activeKey.startsWith('custom:');
@@ -85,6 +104,12 @@ class SettingsController extends ChangeNotifier {
     permissiveDictionary = _box!.get('permissive', defaultValue: false) as bool;
     bestMoveFeedback =
         _box!.get('best_move_feedback', defaultValue: true) as bool;
+    soundVolume =
+        (_box!.get('sound_volume', defaultValue: 0.7) as num).toDouble();
+    _disabledSounds = (_box!.get('sounds_off', defaultValue: const <dynamic>[])
+            as List)
+        .map((e) => e.toString())
+        .toSet();
     final raw = _box!.get('custom_palettes', defaultValue: const <dynamic>[])
         as List;
     customPalettes = raw
@@ -156,6 +181,22 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setSoundVolume(double value) {
+    soundVolume = value.clamp(0.0, 1.0);
+    _box?.put('sound_volume', soundVolume);
+    notifyListeners();
+  }
+
+  void setSoundEnabled(String key, bool enabled) {
+    if (enabled) {
+      _disabledSounds.remove(key);
+    } else {
+      _disabledSounds.add(key);
+    }
+    _box?.put('sounds_off', _disabledSounds.toList());
+    notifyListeners();
+  }
+
   /// Wipes stored preferences and returns to defaults. Used by the Settings
   /// "Reset local data" action (alongside clearing the saved game).
   Future<void> resetToDefaults() async {
@@ -163,6 +204,8 @@ class SettingsController extends ChangeNotifier {
     activeKey = AppThemeId.classic.name;
     permissiveDictionary = false;
     bestMoveFeedback = true;
+    soundVolume = 0.7;
+    _disabledSounds = {};
     customPalettes = [];
     notifyListeners();
   }

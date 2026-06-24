@@ -228,6 +228,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const _SectionTitle('Gameplay'),
               _bestMoveTile(),
               const SizedBox(height: 20),
+              const _SectionTitle('Sounds'),
+              _soundVolumeTile(),
+              for (final k in SettingsController.soundKeys) _soundToggle(k),
+              const SizedBox(height: 20),
               const _SectionTitle('App'),
               _updatesTile(online),
               _forceUpdateTile(),
@@ -666,6 +670,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Local data cleared.')),
+    );
+  }
+
+  static const Map<String, String> _soundLabels = {
+    'place': 'Tile placement',
+    'play': 'Word played',
+    'invalid': 'Invalid move',
+    'pass': 'Pass',
+    'swap': 'Swap',
+    'suggest': 'Suggest',
+    'celebrate': 'Celebrations & win',
+  };
+
+  Widget _soundVolumeTile() {
+    return Card(
+      color: const Color(0x22FFFFFF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        child: Row(
+          children: [
+            const Icon(Icons.volume_up, color: Colors.white70),
+            const SizedBox(width: 8),
+            const Text('Volume',
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            Expanded(
+              child: Slider(
+                value: settings.soundVolume,
+                activeColor: Colors.amberAccent,
+                onChanged: settings.setSoundVolume,
+                onChangeEnd: (v) {
+                  if (v > 0) pwaPlaySound('place', v);
+                },
+              ),
+            ),
+            SizedBox(
+              width: 40,
+              child: Text('${(settings.soundVolume * 100).round()}%',
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _soundToggle(String key) {
+    final on = settings.soundEnabled(key);
+    return Card(
+      color: const Color(0x22FFFFFF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: SwitchListTile(
+        dense: true,
+        value: on,
+        activeThumbColor: Colors.amberAccent,
+        title: Text(_soundLabels[key] ?? key,
+            style: const TextStyle(color: Colors.white)),
+        onChanged: (v) {
+          settings.setSoundEnabled(key, v);
+          if (v && settings.soundVolume > 0) {
+            pwaPlaySound(key, settings.soundVolume); // preview
+          }
+        },
+      ),
     );
   }
 

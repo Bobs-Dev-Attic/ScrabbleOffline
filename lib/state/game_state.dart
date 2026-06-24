@@ -270,6 +270,15 @@ class GameState extends ChangeNotifier {
   int _suggestionIndex = 0;
   String _suggestionSignature = '';
 
+  /// Optional hook the UI sets to play a sound effect for a game event
+  /// (e.g. 'place', 'play', 'invalid', 'pass', 'swap', 'suggest', 'celebrate',
+  /// 'win'). Not fired while replaying a remote game.
+  void Function(String name)? onSound;
+
+  void _sound(String name) {
+    if (!_replaying) onSound?.call(name);
+  }
+
   GameState({required this.dictionary, required this.persistence}) {
     referee = ScrabbleReferee(dictionary);
     ai = AiPlayer(MoveGenerator(dictionary));
@@ -390,6 +399,7 @@ class GameState extends ChangeNotifier {
     final placed = tile ?? currentPlayer.rack[rackIndex];
     pending['$row,$col'] = PendingPlacement(row, col, placed, rackIndex);
     statusMessage = '';
+    _sound('place');
     // Once the player starts placing, fade the suggestion ghosts out now.
     _beginGhostFade();
     notifyListeners();
@@ -572,6 +582,7 @@ class GameState extends ChangeNotifier {
 
     suggestedIds = newIds.take(usedOrder.length).toSet();
     suggestSerial++;
+    _sound('suggest');
     final n = _suggestionCycle.length;
     statusMessage =
         'Try ${_suggestionIndex + 1}/$n: ${best.mainWord} for ${best.score}'
@@ -615,6 +626,7 @@ class GameState extends ChangeNotifier {
     if (!result.valid) {
       statusMessage = result.error ?? 'Invalid move.';
       invalidSerial++;
+      _sound('invalid');
       notifyListeners();
       return result;
     }
@@ -646,6 +658,7 @@ class GameState extends ChangeNotifier {
       if (!usedSuggest) {
         celebrateSerial++;
         celebratedMoveSerial = moveSerial;
+        _sound('celebrate');
       }
       _completeTurn();
     } else if (best != null && result.score < best.score) {
@@ -690,6 +703,7 @@ class GameState extends ChangeNotifier {
       isBingo: result.isBingo,
     ));
 
+    _sound('play');
     pending.clear();
     _cancelGhostFade();
     ghosts = {};
@@ -755,6 +769,7 @@ class GameState extends ChangeNotifier {
     if (gameOver) return;
     recallAll();
     if (isRemote && !_replaying) remoteMoves.add(const RemoteMove.pass());
+    _sound('pass');
     _doPass();
   }
 
@@ -802,6 +817,7 @@ class GameState extends ChangeNotifier {
     consecutivePasses = 0;
     statusMessage = '${currentPlayer.name} exchanged ${returned.length} tiles.';
     _addHistory(MoveLogEntry(currentPlayer.name, 'swap', 0));
+    _sound('swap');
     _advanceTurn();
     _persist();
     notifyListeners();
@@ -1018,6 +1034,7 @@ class GameState extends ChangeNotifier {
     if (!winner.isAI) {
       celebrateWin = true;
       celebrateSerial++;
+      _sound('win');
     }
   }
 
