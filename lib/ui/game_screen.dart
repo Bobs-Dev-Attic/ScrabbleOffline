@@ -23,6 +23,7 @@ import 'help_screen.dart';
 import 'pwa_install.dart';
 import 'rack_widget.dart';
 import 'settings_screen.dart';
+import 'tile_widget.dart';
 
 /// Top-level gameplay screen wiring the board, rack, scoreboard, and controls
 /// to the [GameState] controller.
@@ -895,19 +896,17 @@ class _GameScreenState extends State<GameScreen> {
           content: SizedBox(
             width: 320,
             child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
               children: [
                 for (final letter in kStandardDistribution.keys)
-                  SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                      ),
-                      onPressed: () => Navigator.pop(ctx, letter),
-                      child: Text(letter),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx, letter),
+                    child: TileWidget(
+                      // A blank shows the chosen letter and 0 points.
+                      tile: Tile(letter: letter, value: 0, isBlank: true),
+                      size: 44,
                     ),
                   ),
               ],

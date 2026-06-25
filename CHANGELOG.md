@@ -17,6 +17,12 @@ related commits into coherent, user-facing milestones.
 
 ---
 
+## [1.25.1] - 2026-06-22
+
+### Changed
+- The blank-tile letter picker now shows each choice as an actual game tile
+  (with a 0 for points) instead of a round button.
+
 ## [1.25.0] - 2026-06-22
 
 ### Added
